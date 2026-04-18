@@ -10,7 +10,7 @@ type Product = {
   product_variants: { id: string; size: string; price: number; stock: number }[];
 };
 
-export const Route = createFileRoute("/admin/products")({
+export const Route = createFileRoute("/admin/products/")({
   component: ProductsList,
 });
 

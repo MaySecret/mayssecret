@@ -16,10 +16,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
 import { Route as OrderSuccessRouteImport } from './routes/order.success'
-import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminInventoryRouteImport } from './routes/admin.inventory'
+import { Route as AdminProductsIndexRouteImport } from './routes/admin.products.index'
 import { Route as AdminProductsNewRouteImport } from './routes/admin.products.new'
 import { Route as AdminProductsIdRouteImport } from './routes/admin.products.$id'
 
@@ -58,11 +58,6 @@ const OrderSuccessRoute = OrderSuccessRouteImport.update({
   path: '/order/success',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminProductsRoute = AdminProductsRouteImport.update({
-  id: '/products',
-  path: '/products',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminOrdersRoute = AdminOrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -78,15 +73,20 @@ const AdminInventoryRoute = AdminInventoryRouteImport.update({
   path: '/inventory',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminProductsIndexRoute = AdminProductsIndexRouteImport.update({
+  id: '/products/',
+  path: '/products/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminProductsNewRoute = AdminProductsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => AdminProductsRoute,
+  id: '/products/new',
+  path: '/products/new',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminProductsIdRoute = AdminProductsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AdminProductsRoute,
+  id: '/products/$id',
+  path: '/products/$id',
+  getParentRoute: () => AdminRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -97,12 +97,12 @@ export interface FileRoutesByFullPath {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
-  '/admin/products': typeof AdminProductsRouteWithChildren
   '/order/success': typeof OrderSuccessRoute
   '/product/$id': typeof ProductIdRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/products/$id': typeof AdminProductsIdRoute
   '/admin/products/new': typeof AdminProductsNewRoute
+  '/admin/products/': typeof AdminProductsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -111,12 +111,12 @@ export interface FileRoutesByTo {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
-  '/admin/products': typeof AdminProductsRouteWithChildren
   '/order/success': typeof OrderSuccessRoute
   '/product/$id': typeof ProductIdRoute
   '/admin': typeof AdminIndexRoute
   '/admin/products/$id': typeof AdminProductsIdRoute
   '/admin/products/new': typeof AdminProductsNewRoute
+  '/admin/products': typeof AdminProductsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -127,12 +127,12 @@ export interface FileRoutesById {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
-  '/admin/products': typeof AdminProductsRouteWithChildren
   '/order/success': typeof OrderSuccessRoute
   '/product/$id': typeof ProductIdRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/products/$id': typeof AdminProductsIdRoute
   '/admin/products/new': typeof AdminProductsNewRoute
+  '/admin/products/': typeof AdminProductsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -144,12 +144,12 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/login'
     | '/admin/orders'
-    | '/admin/products'
     | '/order/success'
     | '/product/$id'
     | '/admin/'
     | '/admin/products/$id'
     | '/admin/products/new'
+    | '/admin/products/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -158,12 +158,12 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/login'
     | '/admin/orders'
-    | '/admin/products'
     | '/order/success'
     | '/product/$id'
     | '/admin'
     | '/admin/products/$id'
     | '/admin/products/new'
+    | '/admin/products'
   id:
     | '__root__'
     | '/'
@@ -173,12 +173,12 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/login'
     | '/admin/orders'
-    | '/admin/products'
     | '/order/success'
     | '/product/$id'
     | '/admin/'
     | '/admin/products/$id'
     | '/admin/products/new'
+    | '/admin/products/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -241,13 +241,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrderSuccessRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/products': {
-      id: '/admin/products'
-      path: '/products'
-      fullPath: '/admin/products'
-      preLoaderRoute: typeof AdminProductsRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/admin/orders': {
       id: '/admin/orders'
       path: '/orders'
@@ -269,51 +262,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminInventoryRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/products/': {
+      id: '/admin/products/'
+      path: '/products'
+      fullPath: '/admin/products/'
+      preLoaderRoute: typeof AdminProductsIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/products/new': {
       id: '/admin/products/new'
-      path: '/new'
+      path: '/products/new'
       fullPath: '/admin/products/new'
       preLoaderRoute: typeof AdminProductsNewRouteImport
-      parentRoute: typeof AdminProductsRoute
+      parentRoute: typeof AdminRoute
     }
     '/admin/products/$id': {
       id: '/admin/products/$id'
-      path: '/$id'
+      path: '/products/$id'
       fullPath: '/admin/products/$id'
       preLoaderRoute: typeof AdminProductsIdRouteImport
-      parentRoute: typeof AdminProductsRoute
+      parentRoute: typeof AdminRoute
     }
   }
 }
-
-interface AdminProductsRouteChildren {
-  AdminProductsIdRoute: typeof AdminProductsIdRoute
-  AdminProductsNewRoute: typeof AdminProductsNewRoute
-}
-
-const AdminProductsRouteChildren: AdminProductsRouteChildren = {
-  AdminProductsIdRoute: AdminProductsIdRoute,
-  AdminProductsNewRoute: AdminProductsNewRoute,
-}
-
-const AdminProductsRouteWithChildren = AdminProductsRoute._addFileChildren(
-  AdminProductsRouteChildren,
-)
 
 interface AdminRouteChildren {
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
-  AdminProductsRoute: typeof AdminProductsRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminProductsIdRoute: typeof AdminProductsIdRoute
+  AdminProductsNewRoute: typeof AdminProductsNewRoute
+  AdminProductsIndexRoute: typeof AdminProductsIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminInventoryRoute: AdminInventoryRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminOrdersRoute: AdminOrdersRoute,
-  AdminProductsRoute: AdminProductsRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
+  AdminProductsIdRoute: AdminProductsIdRoute,
+  AdminProductsNewRoute: AdminProductsNewRoute,
+  AdminProductsIndexRoute: AdminProductsIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
@@ -329,3 +319,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
