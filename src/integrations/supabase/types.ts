@@ -14,16 +14,216 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          price: number
+          product_id: string
+          product_name: string
+          quantity: number
+          variant_id: string
+          variant_size: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          price: number
+          product_id: string
+          product_name: string
+          quantity: number
+          variant_id: string
+          variant_size: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          price?: number
+          product_id?: string
+          product_name?: string
+          quantity?: number
+          variant_id?: string
+          variant_size?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          address: string
+          created_at: string
+          customer_name: string
+          delivery_status: Database["public"]["Enums"]["delivery_status"]
+          flutterwave_tx_ref: string | null
+          id: string
+          order_code: string
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          phone: string
+          total_price: number
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          customer_name: string
+          delivery_status?: Database["public"]["Enums"]["delivery_status"]
+          flutterwave_tx_ref?: string | null
+          id?: string
+          order_code?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          phone: string
+          total_price: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          customer_name?: string
+          delivery_status?: Database["public"]["Enums"]["delivery_status"]
+          flutterwave_tx_ref?: string | null
+          id?: string
+          order_code?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          phone?: string
+          total_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      product_variants: {
+        Row: {
+          created_at: string
+          id: string
+          price: number
+          product_id: string
+          size: string
+          stock: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price: number
+          product_id: string
+          size: string
+          stock?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price?: number
+          product_id?: string
+          size?: string
+          stock?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          category: Database["public"]["Enums"]["product_category"]
+          created_at: string
+          description: string
+          featured: boolean
+          id: string
+          images: string[]
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["product_category"]
+          created_at?: string
+          description?: string
+          featured?: boolean
+          id?: string
+          images?: string[]
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["product_category"]
+          created_at?: string
+          description?: string
+          featured?: boolean
+          id?: string
+          images?: string[]
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      delivery_status: "processing" | "shipped" | "delivered"
+      payment_status: "pending" | "paid" | "failed"
+      product_category: "men" | "women" | "unisex"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +350,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      delivery_status: ["processing", "shipped", "delivered"],
+      payment_status: ["pending", "paid", "failed"],
+      product_category: ["men", "women", "unisex"],
+    },
   },
 } as const
