@@ -78,6 +78,7 @@ export type Database = {
           created_at: string
           customer_name: string
           delivery_status: Database["public"]["Enums"]["delivery_status"]
+          email: string
           flutterwave_tx_ref: string | null
           id: string
           order_code: string
@@ -91,6 +92,7 @@ export type Database = {
           created_at?: string
           customer_name: string
           delivery_status?: Database["public"]["Enums"]["delivery_status"]
+          email?: string
           flutterwave_tx_ref?: string | null
           id?: string
           order_code?: string
@@ -104,6 +106,7 @@ export type Database = {
           created_at?: string
           customer_name?: string
           delivery_status?: Database["public"]["Enums"]["delivery_status"]
+          email?: string
           flutterwave_tx_ref?: string | null
           id?: string
           order_code?: string

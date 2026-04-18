@@ -17,6 +17,7 @@ export const Route = createFileRoute("/checkout")({
 const checkoutSchema = z.object({
   customer_name: z.string().trim().min(2, "Name is required").max(100),
   phone: z.string().trim().min(7, "Valid phone required").max(20).regex(/^[+\d\s\-()]+$/, "Invalid phone"),
+  email: z.string().trim().email("Valid email required").max(255),
   address: z.string().trim().min(10, "Full delivery address required").max(500),
 });
 
@@ -34,7 +35,7 @@ function CheckoutPage() {
   const { variantId, qty } = Route.useSearch();
   const navigate = useNavigate();
   const [detail, setDetail] = useState<Detail | null>(null);
-  const [form, setForm] = useState({ customer_name: "", phone: "", address: "" });
+  const [form, setForm] = useState({ customer_name: "", phone: "", email: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -85,6 +86,7 @@ function CheckoutPage() {
       .insert({
         customer_name: parsed.data.customer_name,
         phone: parsed.data.phone,
+        email: parsed.data.email,
         address: parsed.data.address,
         total_price: total,
       })
@@ -140,6 +142,13 @@ function CheckoutPage() {
               onChange={(v) => setForm({ ...form, phone: v })}
               error={errors.phone}
               placeholder="+234 ..."
+            />
+            <Field
+              label="Email address"
+              value={form.email}
+              onChange={(v) => setForm({ ...form, email: v })}
+              error={errors.email}
+              placeholder="you@example.com"
             />
             <div>
               <label className="text-xs uppercase tracking-luxe text-muted-foreground">Delivery address</label>
