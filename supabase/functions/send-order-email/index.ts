@@ -1,11 +1,17 @@
-import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
+// Supabase Edge Function: send-order-email
+// Sends order confirmation/status emails via Resend.
+// Public function (no JWT required) — checkout is unauthenticated.
 
-// Verified domain in Resend.
 const FROM = "Mays Secret <support@orddify.com>";
 const ADMIN_EMAIL = "support@orddify.com";
 
-const STATUS_COPY: Record<string, { subject: (code: string) => string; heading: string; body: string }> = {
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const STATUS_COPY: Record<string, { subject: (c: string) => string; heading: string; body: string }> = {
   placed: {
     subject: (c) => `Your Mays Secret order ${c} is confirmed`,
     heading: "Thank you for your order",
@@ -92,50 +98,54 @@ function renderEmail(opts: {
 </body></html>`;
 }
 
-const sendEmailSchema = z.object({
-  status: z.enum(["placed", "paid", "shipped", "delivered"]),
-  orderCode: z.string().min(1),
-  customerName: z.string().min(1),
-  customerEmail: z.string().email(),
-  total: z.number().nonnegative(),
-  items: z.array(
-    z.object({
-      product_name: z.string(),
-      variant_size: z.string(),
-      quantity: z.number().int().positive(),
-      price: z.number().nonnegative(),
-    }),
-  ).min(1),
-});
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-export const sendOrderEmail = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => sendEmailSchema.parse(input))
-  .handler(async ({ data }) => {
-    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+  try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
-      console.error("[sendOrderEmail] RESEND_API_KEY missing");
-      return { sent: false, error: "Email service not configured" };
+      return new Response(JSON.stringify({ sent: false, error: "RESEND_API_KEY missing" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const copy = STATUS_COPY[data.status];
-    const subject = copy.subject(data.orderCode);
+    const data = await req.json();
+    const { status, orderCode, customerName, customerEmail, total, items } = data ?? {};
+
+    if (!status || !orderCode || !customerName || !customerEmail || typeof total !== "number" || !Array.isArray(items) || items.length === 0) {
+      return new Response(JSON.stringify({ sent: false, error: "Invalid payload" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const copy = STATUS_COPY[status as string];
+    if (!copy) {
+      return new Response(JSON.stringify({ sent: false, error: `Unknown status: ${status}` }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const subject = copy.subject(orderCode);
 
     const customerHtml = renderEmail({
       heading: copy.heading,
       body: copy.body,
-      customerName: data.customerName,
-      orderCode: data.orderCode,
-      items: data.items,
-      total: data.total,
+      customerName,
+      orderCode,
+      items,
+      total,
     });
 
     const adminHtml = renderEmail({
-      heading: data.status === "placed" ? `New order: ${data.orderCode}` : `Order ${data.orderCode} → ${data.status}`,
-      body: `Customer: ${data.customerName} (${data.customerEmail}). Status changed to ${data.status}.`,
-      customerName: data.customerName,
-      orderCode: data.orderCode,
-      items: data.items,
-      total: data.total,
+      heading: status === "placed" ? `New order: ${orderCode}` : `Order ${orderCode} → ${status}`,
+      body: `Customer: ${customerName} (${customerEmail}). Status changed to ${status}.`,
+      customerName,
+      orderCode,
+      items,
+      total,
       isAdmin: true,
     });
 
@@ -150,7 +160,7 @@ export const sendOrderEmail = createServerFn({ method: "POST" })
           },
           body: JSON.stringify({
             from: FROM,
-            to: [data.customerEmail],
+            to: [customerEmail],
             reply_to: ADMIN_EMAIL,
             subject,
             html: customerHtml,
@@ -159,7 +169,7 @@ export const sendOrderEmail = createServerFn({ method: "POST" })
       },
     ];
 
-    if (data.status === "placed") {
+    if (status === "placed") {
       sends.push({
         label: "admin",
         promise: fetch("https://api.resend.com/emails", {
@@ -171,7 +181,7 @@ export const sendOrderEmail = createServerFn({ method: "POST" })
           body: JSON.stringify({
             from: FROM,
             to: [ADMIN_EMAIL],
-            subject: `[Mays Secret] New order ${data.orderCode} — ${data.customerName}`,
+            subject: `[Mays Secret] New order ${orderCode} — ${customerName}`,
             html: adminHtml,
           }),
         }),
@@ -184,17 +194,33 @@ export const sendOrderEmail = createServerFn({ method: "POST" })
       const r = results[i];
       const label = sends[i].label;
       if (r.status === "rejected") {
-        console.error(`[sendOrderEmail] ${label} send threw:`, r.reason);
+        console.error(`[send-order-email] ${label} threw:`, r.reason);
         errors.push(`${label}: network error`);
       } else if (!r.value.ok) {
         const txt = await r.value.text().catch(() => "");
-        console.error(`[sendOrderEmail] ${label} rejected ${r.value.status}:`, txt);
+        console.error(`[send-order-email] ${label} ${r.value.status}:`, txt);
         errors.push(`${label}: ${r.value.status} ${txt.slice(0, 200)}`);
       } else {
-        console.log(`[sendOrderEmail] ${label} sent ✓`);
+        console.log(`[send-order-email] ${label} sent ✓`);
       }
     }
 
-    if (errors.length) return { sent: false, error: errors.join(" | ") };
-    return { sent: true };
-  });
+    if (errors.length) {
+      return new Response(JSON.stringify({ sent: false, error: errors.join(" | ") }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ sent: true }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error("[send-order-email] handler error:", err);
+    return new Response(JSON.stringify({ sent: false, error: String(err) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

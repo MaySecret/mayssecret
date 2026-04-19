@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNGN } from "@/lib/format";
-import { sendOrderEmail } from "@/lib/email.functions";
+import { sendOrderEmail } from "@/lib/email.client";
 
 type Order = {
   id: string; order_code: string; customer_name: string; phone: string; address: string; email: string;
@@ -30,19 +30,17 @@ function OrdersPage() {
     const o = orders.find((x) => x.id === id);
     if (!o) return;
     sendOrderEmail({
-      data: {
-        status,
-        orderCode: o.order_code,
-        customerName: o.customer_name,
-        customerEmail: (o as unknown as { email?: string }).email ?? "",
-        total: Number(o.total_price),
-        items: o.order_items.map((it) => ({
-          product_name: it.product_name,
-          variant_size: it.variant_size,
-          quantity: it.quantity,
-          price: Number(it.price),
-        })),
-      },
+      status,
+      orderCode: o.order_code,
+      customerName: o.customer_name,
+      customerEmail: o.email ?? "",
+      total: Number(o.total_price),
+      items: o.order_items.map((it) => ({
+        product_name: it.product_name,
+        variant_size: it.variant_size,
+        quantity: it.quantity,
+        price: Number(it.price),
+      })),
     }).catch((e) => console.error("Email failed:", e));
   }
   async function setDelivery(id: string, status: Order["delivery_status"]) {
