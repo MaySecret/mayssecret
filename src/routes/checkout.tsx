@@ -4,7 +4,7 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteShell } from "@/components/site/SiteShell";
 import { formatNGN } from "@/lib/format";
-import { sendOrderEmail } from "@/lib/email.functions";
+import { sendOrderEmail } from "@/lib/email.client";
 
 export const Route = createFileRoute("/checkout")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -112,21 +112,19 @@ function CheckoutPage() {
 
     // Fire confirmation email (customer + admin notification). Don't block UX on failure.
     sendOrderEmail({
-      data: {
-        status: "placed",
-        orderCode: order.order_code,
-        customerName: parsed.data.customer_name,
-        customerEmail: parsed.data.email,
-        total,
-        items: [
-          {
-            product_name: detail.product_name,
-            variant_size: detail.size,
-            quantity: qty,
-            price: detail.price,
-          },
-        ],
-      },
+      status: "placed",
+      orderCode: order.order_code,
+      customerName: parsed.data.customer_name,
+      customerEmail: parsed.data.email,
+      total,
+      items: [
+        {
+          product_name: detail.product_name,
+          variant_size: detail.size,
+          quantity: qty,
+          price: detail.price,
+        },
+      ],
     })
       .then((r) => console.log("[checkout] sendOrderEmail result:", r))
       .catch((e) => console.error("[checkout] sendOrderEmail failed:", e));
