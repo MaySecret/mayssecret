@@ -55,9 +55,14 @@ function HomePage() {
           muted
           loop
           playsInline
-          poster=""
+          preload="metadata"
+          poster="https://images.pexels.com/videos/3998397/free-video-3998397.jpg?auto=compress&cs=tinysrgb&w=1600"
         >
-          <source src="/hero.mp4" type="video/mp4" />
+          {/* Lightweight stock placeholder — swap with your branded upload later */}
+          <source
+            src="https://videos.pexels.com/video-files/3998397/3998397-uhd_2560_1440_25fps.mp4"
+            type="video/mp4"
+          />
         </video>
         {/* Soft pink overlay for legibility */}
         <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background/80" />
