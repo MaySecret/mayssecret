@@ -20,7 +20,7 @@ function OrdersPage() {
   async function load() {
     const { data } = await supabase
       .from("orders")
-      .select("id, order_code, customer_name, phone, address, total_price, payment_status, delivery_status, created_at, order_items(product_name, variant_size, quantity, price)")
+      .select("id, order_code, customer_name, phone, address, email, total_price, payment_status, delivery_status, created_at, order_items(product_name, variant_size, quantity, price)")
       .order("created_at", { ascending: false });
     setOrders((data as unknown as Order[]) ?? []);
   }
