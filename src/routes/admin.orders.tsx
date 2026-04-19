@@ -5,7 +5,7 @@ import { formatNGN } from "@/lib/format";
 import { sendOrderEmail } from "@/lib/email.functions";
 
 type Order = {
-  id: string; order_code: string; customer_name: string; phone: string; address: string;
+  id: string; order_code: string; customer_name: string; phone: string; address: string; email: string;
   total_price: number; payment_status: "pending"|"paid"|"failed"; delivery_status: "processing"|"shipped"|"delivered";
   created_at: string;
   order_items: { product_name: string; variant_size: string; quantity: number; price: number }[];
