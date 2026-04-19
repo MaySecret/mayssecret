@@ -5,7 +5,7 @@ import { formatNGN } from "@/lib/format";
 import { sendOrderEmail } from "@/lib/email.functions";
 
 type Order = {
-  id: string; order_code: string; customer_name: string; phone: string; address: string;
+  id: string; order_code: string; customer_name: string; phone: string; address: string; email: string;
   total_price: number; payment_status: "pending"|"paid"|"failed"; delivery_status: "processing"|"shipped"|"delivered";
   created_at: string;
   order_items: { product_name: string; variant_size: string; quantity: number; price: number }[];
@@ -20,24 +20,39 @@ function OrdersPage() {
   async function load() {
     const { data } = await supabase
       .from("orders")
-      .select("id, order_code, customer_name, phone, address, total_price, payment_status, delivery_status, created_at, order_items(product_name, variant_size, quantity, price)")
+      .select("id, order_code, customer_name, phone, address, email, total_price, payment_status, delivery_status, created_at, order_items(product_name, variant_size, quantity, price)")
       .order("created_at", { ascending: false });
     setOrders((data as unknown as Order[]) ?? []);
   }
   useEffect(() => { load(); }, []);
 
+  function emailFor(id: string, status: "paid" | "shipped" | "delivered") {
+    const o = orders.find((x) => x.id === id);
+    if (!o) return;
+    sendOrderEmail({
+      data: {
+        status,
+        orderCode: o.order_code,
+        customerName: o.customer_name,
+        customerEmail: (o as unknown as { email?: string }).email ?? "",
+        total: Number(o.total_price),
+        items: o.order_items.map((it) => ({
+          product_name: it.product_name,
+          variant_size: it.variant_size,
+          quantity: it.quantity,
+          price: Number(it.price),
+        })),
+      },
+    }).catch((e) => console.error("Email failed:", e));
+  }
   async function setDelivery(id: string, status: Order["delivery_status"]) {
     await supabase.from("orders").update({ delivery_status: status }).eq("id", id);
-    if (status === "shipped" || status === "delivered") {
-      sendOrderEmail({ data: { orderId: id, status } }).catch((e) => console.error("Email failed:", e));
-    }
+    if (status === "shipped" || status === "delivered") emailFor(id, status);
     load();
   }
   async function setPayment(id: string, status: Order["payment_status"]) {
     await supabase.from("orders").update({ payment_status: status }).eq("id", id);
-    if (status === "paid") {
-      sendOrderEmail({ data: { orderId: id, status: "paid" } }).catch((e) => console.error("Email failed:", e));
-    }
+    if (status === "paid") emailFor(id, "paid");
     load();
   }
 
