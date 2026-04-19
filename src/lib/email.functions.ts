@@ -1,8 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
 
-const FROM = "Mays Secret <pelumi@orddify.com>";
+// Resend's verified test sender. Works without domain verification.
+// Replace with "Mays Secret <noreply@yourdomain.com>" once your domain is verified in Resend.
+const FROM = "Mays Secret <onboarding@resend.dev>";
 const ADMIN_EMAIL = "pelumi@orddify.com";
 
 const STATUS_COPY: Record<string, { subject: (code: string) => string; heading: string; body: string }> = {
@@ -83,7 +84,7 @@ function renderEmail(opts: {
         <tr><td style="padding:32px;background:#fbeef3;text-align:center;">
           <p style="margin:0;font-size:12px;color:#8a5260;line-height:1.6;">
             Mays Secret · Lagos, Nigeria<br>
-            Questions? Reply to this email or write to <a href="mailto:pelumi@orddify.com" style="color:#3a1820;">pelumi@orddify.com</a>
+            Questions? Reply to this email or write to <a href="mailto:${ADMIN_EMAIL}" style="color:#3a1820;">${ADMIN_EMAIL}</a>
           </p>
         </td></tr>
       </table>
@@ -93,68 +94,56 @@ function renderEmail(opts: {
 }
 
 const sendEmailSchema = z.object({
-  orderId: z.string().uuid(),
   status: z.enum(["placed", "paid", "shipped", "delivered"]),
+  orderCode: z.string().min(1),
+  customerName: z.string().min(1),
+  customerEmail: z.string().email(),
+  total: z.number().nonnegative(),
+  items: z.array(
+    z.object({
+      product_name: z.string(),
+      variant_size: z.string(),
+      quantity: z.number().int().positive(),
+      price: z.number().nonnegative(),
+    }),
+  ).min(1),
 });
 
 export const sendOrderEmail = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => sendEmailSchema.parse(input))
   .handler(async ({ data }) => {
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
-    const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
-    const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
     if (!RESEND_API_KEY) {
       console.error("[sendOrderEmail] RESEND_API_KEY missing");
       return { sent: false, error: "Email service not configured" };
     }
-    if (!SUPABASE_URL || !SERVICE_KEY) {
-      console.error("[sendOrderEmail] Supabase server credentials missing");
-      return { sent: false, error: "Server not configured" };
-    }
-
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
-    const { data: order, error } = await supabase
-      .from("orders")
-      .select(
-        "id, order_code, customer_name, email, total_price, order_items(product_name, variant_size, quantity, price)",
-      )
-      .eq("id", data.orderId)
-      .single();
-
-    if (error || !order) {
-      console.error("[sendOrderEmail] order lookup failed", error);
-      return { sent: false, error: "Order not found" };
-    }
 
     const copy = STATUS_COPY[data.status];
-    const items = (order.order_items as Item[]) ?? [];
-    const subject = copy.subject(order.order_code);
+    const subject = copy.subject(data.orderCode);
 
     const customerHtml = renderEmail({
       heading: copy.heading,
       body: copy.body,
-      customerName: order.customer_name,
-      orderCode: order.order_code,
-      items,
-      total: Number(order.total_price),
+      customerName: data.customerName,
+      orderCode: data.orderCode,
+      items: data.items,
+      total: data.total,
     });
 
     const adminHtml = renderEmail({
-      heading: data.status === "placed" ? `New order: ${order.order_code}` : `Order ${order.order_code} → ${data.status}`,
-      body: `Customer: ${order.customer_name} (${order.email}). Status changed to ${data.status}.`,
-      customerName: order.customer_name,
-      orderCode: order.order_code,
-      items,
-      total: Number(order.total_price),
+      heading: data.status === "placed" ? `New order: ${data.orderCode}` : `Order ${data.orderCode} → ${data.status}`,
+      body: `Customer: ${data.customerName} (${data.customerEmail}). Status changed to ${data.status}.`,
+      customerName: data.customerName,
+      orderCode: data.orderCode,
+      items: data.items,
+      total: data.total,
       isAdmin: true,
     });
 
-    const sends: Array<Promise<Response>> = [];
-
-    if (order.email) {
-      sends.push(
-        fetch("https://api.resend.com/emails", {
+    const sends: Array<{ label: string; promise: Promise<Response> }> = [
+      {
+        label: "customer",
+        promise: fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -162,19 +151,19 @@ export const sendOrderEmail = createServerFn({ method: "POST" })
           },
           body: JSON.stringify({
             from: FROM,
-            to: [order.email],
+            to: [data.customerEmail],
             reply_to: ADMIN_EMAIL,
             subject,
             html: customerHtml,
           }),
         }),
-      );
-    }
+      },
+    ];
 
-    // Notify admin only on placed orders to avoid noise
     if (data.status === "placed") {
-      sends.push(
-        fetch("https://api.resend.com/emails", {
+      sends.push({
+        label: "admin",
+        promise: fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -183,26 +172,30 @@ export const sendOrderEmail = createServerFn({ method: "POST" })
           body: JSON.stringify({
             from: FROM,
             to: [ADMIN_EMAIL],
-            subject: `[Mays Secret] New order ${order.order_code} — ${order.customer_name}`,
+            subject: `[Mays Secret] New order ${data.orderCode} — ${data.customerName}`,
             html: adminHtml,
           }),
         }),
-      );
+      });
     }
 
-    const results = await Promise.allSettled(sends);
-    const failures = results.filter((r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok));
-    if (failures.length) {
-      for (const f of failures) {
-        if (f.status === "fulfilled") {
-          const txt = await f.value.text().catch(() => "");
-          console.error("[sendOrderEmail] Resend rejected:", f.value.status, txt);
-        } else {
-          console.error("[sendOrderEmail] send failed:", f.reason);
-        }
+    const results = await Promise.allSettled(sends.map((s) => s.promise));
+    const errors: string[] = [];
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i];
+      const label = sends[i].label;
+      if (r.status === "rejected") {
+        console.error(`[sendOrderEmail] ${label} send threw:`, r.reason);
+        errors.push(`${label}: network error`);
+      } else if (!r.value.ok) {
+        const txt = await r.value.text().catch(() => "");
+        console.error(`[sendOrderEmail] ${label} rejected ${r.value.status}:`, txt);
+        errors.push(`${label}: ${r.value.status} ${txt.slice(0, 200)}`);
+      } else {
+        console.log(`[sendOrderEmail] ${label} sent ✓`);
       }
-      return { sent: false, error: "One or more emails failed to send" };
     }
 
+    if (errors.length) return { sent: false, error: errors.join(" | ") };
     return { sent: true };
   });
