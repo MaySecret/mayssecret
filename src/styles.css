@@ -42,58 +42,60 @@
 :root {
   --radius: 0.25rem;
 
-  /* Sakura Pink palette — #F7C6D9 dominant */
-  --sakura: oklch(0.87 0.06 0);              /* #F7C6D9 — base */
+  /* Sakura Pink #F7C6D9 — used as accent (replaces previous chocolate) */
+  --sakura: oklch(0.87 0.06 0);              /* #F7C6D9 — pink base */
   --sakura-deep: oklch(0.78 0.10 5);         /* deeper rose */
-  --rose-ink: oklch(0.32 0.07 10);           /* deep rose-burgundy text */
+  --rose-ink: oklch(0.32 0.07 10);           /* deep rose-burgundy */
 
-  --background: oklch(0.87 0.06 0);          /* sakura pink */
-  --foreground: oklch(0.28 0.07 10);         /* deep rose-ink */
+  /* White / cream dominant background */
+  --background: oklch(0.99 0.005 60);        /* near white */
+  --foreground: oklch(0.18 0.01 40);         /* near-black ink */
 
-  --card: oklch(0.94 0.035 0);               /* lighter pink card */
-  --card-foreground: oklch(0.28 0.07 10);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.01 40);
 
-  --popover: oklch(0.96 0.025 0);
-  --popover-foreground: oklch(0.28 0.07 10);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.01 40);
 
-  --primary: oklch(0.32 0.07 10);            /* deep rose-burgundy */
-  --primary-foreground: oklch(0.94 0.035 0);
+  /* Primary = pink (replaces chocolate brown) */
+  --primary: oklch(0.87 0.06 0);             /* sakura pink */
+  --primary-foreground: oklch(0.28 0.07 10); /* rose-ink for contrast on pink */
 
-  --secondary: oklch(0.92 0.04 0);
-  --secondary-foreground: oklch(0.32 0.07 10);
+  --secondary: oklch(0.96 0.01 60);
+  --secondary-foreground: oklch(0.18 0.01 40);
 
-  --muted: oklch(0.91 0.04 0);
-  --muted-foreground: oklch(0.45 0.06 8);
+  --muted: oklch(0.96 0.005 60);
+  --muted-foreground: oklch(0.45 0.02 40);
 
-  --accent: oklch(0.78 0.10 5);              /* deeper rose accent */
-  --accent-foreground: oklch(0.96 0.025 0);
+  --accent: oklch(0.78 0.10 5);              /* deeper rose for hover/highlight */
+  --accent-foreground: oklch(0.99 0.005 60);
 
-  --gold: oklch(0.78 0.10 5);                /* repurposed: deep rose */
-  --gold-foreground: oklch(0.96 0.025 0);
+  --gold: oklch(0.87 0.06 0);                /* repurposed: pink */
+  --gold-foreground: oklch(0.28 0.07 10);
 
-  --cream: oklch(0.94 0.035 0);              /* lighter pink */
+  --cream: oklch(0.97 0.015 350);            /* faint pink-cream */
 
   --destructive: oklch(0.50 0.20 28);
-  --destructive-foreground: oklch(0.96 0.025 0);
+  --destructive-foreground: oklch(0.99 0.005 60);
 
-  --border: oklch(0.78 0.06 5);
-  --input: oklch(0.82 0.05 3);
-  --ring: oklch(0.55 0.10 8);
+  --border: oklch(0.90 0.01 40);
+  --input: oklch(0.92 0.01 40);
+  --ring: oklch(0.78 0.10 5);
 
-  --chart-1: oklch(0.78 0.10 5);
-  --chart-2: oklch(0.65 0.09 8);
-  --chart-3: oklch(0.45 0.07 10);
-  --chart-4: oklch(0.87 0.06 0);
+  --chart-1: oklch(0.87 0.06 0);
+  --chart-2: oklch(0.78 0.10 5);
+  --chart-3: oklch(0.65 0.09 8);
+  --chart-4: oklch(0.45 0.07 10);
   --chart-5: oklch(0.32 0.07 10);
 
-  --sidebar: oklch(0.94 0.035 0);
-  --sidebar-foreground: oklch(0.28 0.07 10);
-  --sidebar-primary: oklch(0.32 0.07 10);
-  --sidebar-primary-foreground: oklch(0.96 0.025 0);
-  --sidebar-accent: oklch(0.91 0.04 0);
-  --sidebar-accent-foreground: oklch(0.28 0.07 10);
-  --sidebar-border: oklch(0.78 0.06 5);
-  --sidebar-ring: oklch(0.55 0.10 8);
+  --sidebar: oklch(0.99 0.005 60);
+  --sidebar-foreground: oklch(0.18 0.01 40);
+  --sidebar-primary: oklch(0.87 0.06 0);
+  --sidebar-primary-foreground: oklch(0.28 0.07 10);
+  --sidebar-accent: oklch(0.96 0.01 60);
+  --sidebar-accent-foreground: oklch(0.18 0.01 40);
+  --sidebar-border: oklch(0.90 0.01 40);
+  --sidebar-ring: oklch(0.78 0.10 5);
 }
 
 .dark {
