@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNGN } from "@/lib/format";
-import { sendOrderEmail } from "@/lib/email.client";
+import { sendOrderEmail } from "@/lib/email";
 
 type Order = {
   id: string; order_code: string; customer_name: string; phone: string; address: string; email: string;
