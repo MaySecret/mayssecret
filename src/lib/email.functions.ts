@@ -1,10 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-// Resend's verified test sender. Works without domain verification.
-// Replace with "Mays Secret <noreply@yourdomain.com>" once your domain is verified in Resend.
-const FROM = "Mays Secret <onboarding@resend.dev>";
-const ADMIN_EMAIL = "pelumi@orddify.com";
+// Verified domain in Resend.
+const FROM = "Mays Secret <support@orddify.com>";
+const ADMIN_EMAIL = "support@orddify.com";
 
 const STATUS_COPY: Record<string, { subject: (code: string) => string; heading: string; body: string }> = {
   placed: {
