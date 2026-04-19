@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SiteShell } from "@/components/site/SiteShell";
 import { Marquee } from "@/components/site/Marquee";
 import { formatNGN } from "@/lib/format";
+import heroVideo from "@/assets/hero.mp4";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -58,11 +59,8 @@ function HomePage() {
           preload="metadata"
           poster="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=1600&q=70"
         >
-          {/* Temporary lightweight stock placeholder — replace with your branded upload */}
-          <source
-            src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4"
-            type="video/mp4"
-          />
+          {/* Local placeholder — replace src/assets/hero.mp4 with your branded video */}
+          <source src={heroVideo} type="video/mp4" />
         </video>
         {/* Soft pink overlay for legibility */}
         <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background/80" />
