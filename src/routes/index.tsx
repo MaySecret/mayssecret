@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteShell } from "@/components/site/SiteShell";
+import { Marquee } from "@/components/site/Marquee";
 import { formatNGN } from "@/lib/format";
-import heroImg from "@/assets/hero.jpg";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -47,44 +47,51 @@ function HomePage() {
 
   return (
     <SiteShell>
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="grid items-center gap-10 px-5 py-16 md:grid-cols-2 md:gap-0 md:px-0 md:py-0">
-          <div className="mx-auto max-w-xl md:px-12 lg:px-20">
-            <p className="text-xs uppercase tracking-luxe text-muted-foreground">The Mayscent House</p>
-            <h1 className="mt-6 font-display text-5xl leading-[1.05] md:text-7xl">
+      {/* Hero — full-bleed video background */}
+      <section className="relative h-[88vh] min-h-[600px] w-full overflow-hidden">
+        <video
+          className="absolute inset-0 h-full w-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+          poster=""
+        >
+          <source src="/hero.mp4" type="video/mp4" />
+        </video>
+        {/* Soft pink overlay for legibility */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background/80" />
+
+        <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col justify-center px-5 md:px-12">
+          <div className="max-w-2xl">
+            <p className="text-xs uppercase tracking-luxe text-foreground/70">The Mays Secret House</p>
+            <h1 className="mt-6 font-display text-5xl leading-[1.05] text-foreground md:text-7xl lg:text-8xl">
               Scents that linger<br />long after you leave.
             </h1>
-            <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
+            <p className="mt-6 max-w-md text-base leading-relaxed text-foreground/80">
               A small collection of fragrances, composed slowly and worn with intention.
               Each bottle is a quiet ritual.
             </p>
-            <div className="mt-10 flex items-center gap-6">
+            <div className="mt-10 flex flex-wrap items-center gap-6">
               <Link
                 to="/shop"
-                className="inline-flex items-center bg-primary px-7 py-3 text-xs uppercase tracking-luxe text-primary-foreground transition hover:bg-primary/90"
+                className="inline-flex items-center bg-primary px-7 py-3 text-xs uppercase tracking-luxe text-primary-foreground transition hover:bg-accent hover:text-accent-foreground"
               >
                 Discover the collection
               </Link>
-              <Link to="/shop" search={{ category: "unisex" }} className="text-xs uppercase tracking-luxe text-foreground hover:text-gold">
+              <Link to="/shop" search={{ category: "unisex" }} className="text-xs uppercase tracking-luxe text-foreground hover:text-accent">
                 Bestsellers →
               </Link>
             </div>
           </div>
-          <div className="relative">
-            <img
-              src={heroImg}
-              alt="Mayscent signature fragrance bottle bathed in golden light"
-              width={1600}
-              height={1024}
-              className="aspect-[4/5] w-full object-cover md:aspect-auto md:h-[88vh]"
-            />
-          </div>
         </div>
       </section>
 
+      {/* Marquee — Every Scent Tells A Secret */}
+      <Marquee />
+
       {/* Category strip */}
-      <section className="border-y border-border/60 bg-cream/40">
+      <section className="border-b border-border/60 bg-cream/60">
         <div className="mx-auto grid max-w-7xl grid-cols-3 divide-x divide-border/60 px-5 md:px-8">
           {[
             { label: "For Her", to: "women" },
@@ -110,7 +117,7 @@ function HomePage() {
             <p className="text-xs uppercase tracking-luxe text-muted-foreground">The Collection</p>
             <h2 className="mt-3 font-display text-4xl md:text-5xl">Featured fragrances</h2>
           </div>
-          <Link to="/shop" className="hidden text-xs uppercase tracking-luxe text-foreground hover:text-gold md:inline">
+          <Link to="/shop" className="hidden text-xs uppercase tracking-luxe text-foreground hover:text-accent md:inline">
             View all →
           </Link>
         </div>
@@ -141,11 +148,11 @@ function HomePage() {
       </section>
 
       {/* Story */}
-      <section className="bg-primary text-primary-foreground">
+      <section className="bg-accent text-accent-foreground">
         <div className="mx-auto grid max-w-5xl gap-8 px-5 py-24 text-center md:px-8">
-          <p className="text-xs uppercase tracking-luxe text-primary-foreground/60">Our craft</p>
+          <p className="text-xs uppercase tracking-luxe text-accent-foreground/70">Our craft</p>
           <h2 className="font-display text-4xl leading-tight md:text-5xl">
-            Every Mayscent is composed by hand,<br />in small batches, with rare materials.
+            Every Mays Secret is composed by hand,<br />in small batches, with rare materials.
           </h2>
         </div>
       </section>

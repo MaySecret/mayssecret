@@ -11,7 +11,7 @@ export const Route = createFileRoute("/checkout")({
     qty: Math.max(1, Number(search.qty) || 1),
   }),
   component: CheckoutPage,
-  head: () => ({ meta: [{ title: "Checkout — Mayscent" }] }),
+  head: () => ({ meta: [{ title: "Checkout — Mays Secret" }] }),
 });
 
 const checkoutSchema = z.object({

@@ -42,7 +42,7 @@ function Dashboard() {
   return (
     <div className="p-6 md:p-10">
       <h1 className="font-display text-3xl">Dashboard</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Overview of your Mayscent store.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Overview of your Mays Secret store.</p>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => (
           <div key={c.label} className="border border-border bg-cream/30 p-6">

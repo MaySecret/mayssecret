@@ -13,8 +13,8 @@ export const Route = createFileRoute("/shop")({
   component: ShopPage,
   head: () => ({
     meta: [
-      { title: "Shop — Mayscent" },
-      { name: "description", content: "Browse the complete Mayscent fragrance collection." },
+      { title: "Shop — Mays Secret" },
+      { name: "description", content: "Browse the complete Mays Secret fragrance collection." },
     ],
   }),
 });
