@@ -56,11 +56,11 @@ function HomePage() {
           loop
           playsInline
           preload="metadata"
-          poster="https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=1600&q=70"
+          poster="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=1600&q=70"
         >
           {/* Lightweight stock placeholder — swap with your branded upload later */}
           <source
-            src="https://cdn.coverr.co/videos/coverr-pouring-perfume-in-a-bottle-2633/1080p.mp4"
+            src="https://res.cloudinary.com/demo/video/upload/q_auto,f_auto,w_1280/elephants.mp4"
             type="video/mp4"
           />
         </video>
