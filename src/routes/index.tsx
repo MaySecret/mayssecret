@@ -56,11 +56,11 @@ function HomePage() {
           loop
           playsInline
           preload="metadata"
-          poster="https://images.pexels.com/videos/3998397/free-video-3998397.jpg?auto=compress&cs=tinysrgb&w=1600"
+          poster="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=1600&q=70"
         >
-          {/* Lightweight stock placeholder — swap with your branded upload later */}
+          {/* Temporary lightweight stock placeholder — replace with your branded upload */}
           <source
-            src="https://videos.pexels.com/video-files/3998397/3998397-uhd_2560_1440_25fps.mp4"
+            src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4"
             type="video/mp4"
           />
         </video>
