@@ -58,9 +58,9 @@ function HomePage() {
           preload="metadata"
           poster="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=1600&q=70"
         >
-          {/* Lightweight stock placeholder — swap with your branded upload later */}
+          {/* Temporary lightweight stock placeholder — replace with your branded upload */}
           <source
-            src="https://res.cloudinary.com/demo/video/upload/q_auto,f_auto,w_1280/elephants.mp4"
+            src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4"
             type="video/mp4"
           />
         </video>
