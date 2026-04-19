@@ -26,18 +26,33 @@ function OrdersPage() {
   }
   useEffect(() => { load(); }, []);
 
+  function emailFor(id: string, status: "paid" | "shipped" | "delivered") {
+    const o = orders.find((x) => x.id === id);
+    if (!o) return;
+    sendOrderEmail({
+      data: {
+        status,
+        orderCode: o.order_code,
+        customerName: o.customer_name,
+        customerEmail: (o as unknown as { email?: string }).email ?? "",
+        total: Number(o.total_price),
+        items: o.order_items.map((it) => ({
+          product_name: it.product_name,
+          variant_size: it.variant_size,
+          quantity: it.quantity,
+          price: Number(it.price),
+        })),
+      },
+    }).catch((e) => console.error("Email failed:", e));
+  }
   async function setDelivery(id: string, status: Order["delivery_status"]) {
     await supabase.from("orders").update({ delivery_status: status }).eq("id", id);
-    if (status === "shipped" || status === "delivered") {
-      sendOrderEmail({ data: { orderId: id, status } }).catch((e) => console.error("Email failed:", e));
-    }
+    if (status === "shipped" || status === "delivered") emailFor(id, status);
     load();
   }
   async function setPayment(id: string, status: Order["payment_status"]) {
     await supabase.from("orders").update({ payment_status: status }).eq("id", id);
-    if (status === "paid") {
-      sendOrderEmail({ data: { orderId: id, status: "paid" } }).catch((e) => console.error("Email failed:", e));
-    }
+    if (status === "paid") emailFor(id, "paid");
     load();
   }
 
