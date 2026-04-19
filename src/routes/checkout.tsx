@@ -111,9 +111,25 @@ function CheckoutPage() {
     });
 
     // Fire confirmation email (customer + admin notification). Don't block UX on failure.
-    sendOrderEmail({ data: { orderId: order.id, status: "placed" } }).catch((e) =>
-      console.error("Order email failed:", e),
-    );
+    sendOrderEmail({
+      data: {
+        status: "placed",
+        orderCode: order.order_code,
+        customerName: parsed.data.customer_name,
+        customerEmail: parsed.data.email,
+        total,
+        items: [
+          {
+            product_name: detail.product_name,
+            variant_size: detail.size,
+            quantity: qty,
+            price: detail.price,
+          },
+        ],
+      },
+    })
+      .then((r) => console.log("[checkout] sendOrderEmail result:", r))
+      .catch((e) => console.error("[checkout] sendOrderEmail failed:", e));
 
     // Flutterwave will be wired here. For now we mark as pending and route to success.
     navigate({ to: "/order/success", search: { id: order.id } });
