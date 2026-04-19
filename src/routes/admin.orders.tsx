@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNGN } from "@/lib/format";
+import { sendOrderEmail } from "@/lib/email.functions";
 
 type Order = {
   id: string; order_code: string; customer_name: string; phone: string; address: string;
@@ -27,10 +28,16 @@ function OrdersPage() {
 
   async function setDelivery(id: string, status: Order["delivery_status"]) {
     await supabase.from("orders").update({ delivery_status: status }).eq("id", id);
+    if (status === "shipped" || status === "delivered") {
+      sendOrderEmail({ data: { orderId: id, status } }).catch((e) => console.error("Email failed:", e));
+    }
     load();
   }
   async function setPayment(id: string, status: Order["payment_status"]) {
     await supabase.from("orders").update({ payment_status: status }).eq("id", id);
+    if (status === "paid") {
+      sendOrderEmail({ data: { orderId: id, status: "paid" } }).catch((e) => console.error("Email failed:", e));
+    }
     load();
   }
 

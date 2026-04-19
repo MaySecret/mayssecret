@@ -7,9 +7,9 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Mayscent — Fragrances composed for the moments that linger" },
-      { name: "description", content: "Mayscent is a luxury fragrance house. Discover signature scents for men, women and unisex, crafted with rare ingredients." },
-      { property: "og:title", content: "Mayscent — Luxury Fragrance House" },
+      { title: "Mays Secret — Fragrances composed for the moments that linger" },
+      { name: "description", content: "Mays Secret is a luxury fragrance house. Discover signature scents for men, women and unisex, crafted with rare ingredients." },
+      { property: "og:title", content: "Mays Secret — Luxury Fragrance House" },
       { property: "og:description", content: "Signature fragrances for the moments that linger." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

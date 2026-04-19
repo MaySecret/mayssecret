@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteShell } from "@/components/site/SiteShell";
 import { formatNGN } from "@/lib/format";
+import { sendOrderEmail } from "@/lib/email.functions";
 
 export const Route = createFileRoute("/checkout")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -11,7 +12,7 @@ export const Route = createFileRoute("/checkout")({
     qty: Math.max(1, Number(search.qty) || 1),
   }),
   component: CheckoutPage,
-  head: () => ({ meta: [{ title: "Checkout — Mayscent" }] }),
+  head: () => ({ meta: [{ title: "Checkout — Mays Secret" }] }),
 });
 
 const checkoutSchema = z.object({
@@ -109,8 +110,12 @@ function CheckoutPage() {
       price: detail.price,
     });
 
+    // Fire confirmation email (customer + admin notification). Don't block UX on failure.
+    sendOrderEmail({ data: { orderId: order.id, status: "placed" } }).catch((e) =>
+      console.error("Order email failed:", e),
+    );
+
     // Flutterwave will be wired here. For now we mark as pending and route to success.
-    // TODO: Initialize Flutterwave payment, redirect to FW checkout, verify via webhook.
     navigate({ to: "/order/success", search: { id: order.id } });
   }
 

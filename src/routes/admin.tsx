@@ -46,7 +46,7 @@ function AdminGate() {
     <div className="flex min-h-screen bg-background">
       <aside className="hidden w-60 flex-shrink-0 border-r border-border bg-cream/40 md:block">
         <div className="p-6">
-          <Link to="/" className="font-display text-2xl">Mayscent<span className="text-gold">.</span></Link>
+          <Link to="/" className="font-display text-2xl">Mays Secret<span className="text-accent">.</span></Link>
           <p className="mt-1 text-xs uppercase tracking-luxe text-muted-foreground">Admin</p>
         </div>
         <nav className="px-3 pb-6 text-sm">
