@@ -56,7 +56,7 @@ function HomePage() {
           loop
           playsInline
           preload="metadata"
-          poster="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=1600&q=70"
+          poster="#"
         >
           <source src={heroVideo} type="video/mp4" />
         </video>
