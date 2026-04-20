@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteShell } from "@/components/site/SiteShell";
 import { formatNGN } from "@/lib/format";
+import { useCart } from "@/lib/cart";
 
 export const Route = createFileRoute("/product/$id")({
   component: ProductPage,
@@ -21,10 +22,13 @@ type Product = {
 function ProductPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const { add } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [activeImg, setActiveImg] = useState(0);
   const [variantId, setVariantId] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -60,12 +64,19 @@ function ProductPage() {
 
   const outOfStock = !selected || selected.stock === 0;
 
-  function buyNow() {
+  async function addToCart() {
     if (!selected) return;
-    navigate({
-      to: "/checkout",
-      search: { variantId: selected.id, qty },
-    });
+    setAdding(true);
+    await add(selected.id, qty);
+    setAdding(false);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1800);
+  }
+
+  async function buyNow() {
+    if (!selected) return;
+    await add(selected.id, qty);
+    navigate({ to: "/cart" });
   }
 
   return (
