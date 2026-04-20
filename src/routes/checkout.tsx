@@ -1,16 +1,13 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteShell } from "@/components/site/SiteShell";
 import { formatNGN } from "@/lib/format";
-import { sendOrderEmail } from "@/lib/email";
+import { useAuth } from "@/lib/auth";
+import { useCart } from "@/lib/cart";
 
 export const Route = createFileRoute("/checkout")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    variantId: String(search.variantId ?? ""),
-    qty: Math.max(1, Number(search.qty) || 1),
-  }),
   component: CheckoutPage,
   head: () => ({ meta: [{ title: "Checkout — Mays Secret" }] }),
 });
@@ -22,55 +19,43 @@ const checkoutSchema = z.object({
   address: z.string().trim().min(10, "Full delivery address required").max(500),
 });
 
-type Detail = {
-  variant_id: string;
-  product_id: string;
-  product_name: string;
-  size: string;
-  price: number;
-  stock: number;
-  image: string;
-};
-
 function CheckoutPage() {
-  const { variantId, qty } = Route.useSearch();
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
+  const { items, subtotal, count, clear, loading: cartLoading } = useCart();
   const navigate = useNavigate();
-  const [detail, setDetail] = useState<Detail | null>(null);
+
   const [form, setForm] = useState({ customer_name: "", phone: "", email: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  // Redirect unauthenticated users
   useEffect(() => {
-    if (!variantId) {
-      navigate({ to: "/shop" });
-      return;
+    if (!authLoading && !user) {
+      navigate({ to: "/login", search: { redirect: "/checkout" } });
     }
-    (async () => {
-      const { data } = await supabase
-        .from("product_variants")
-        .select("id, size, price, stock, product_id, products(name, images)")
-        .eq("id", variantId)
-        .single();
-      if (data) {
-        const prod = data.products as unknown as { name: string; images: string[] };
-        setDetail({
-          variant_id: data.id,
-          product_id: data.product_id,
-          product_name: prod.name,
-          size: data.size,
-          price: Number(data.price),
-          stock: data.stock,
-          image: prod.images?.[0] ?? "",
-        });
-      }
-    })();
-  }, [variantId, navigate]);
+  }, [user, authLoading, navigate]);
 
-  const total = detail ? detail.price * qty : 0;
+  // Prefill from profile + auth email
+  useEffect(() => {
+    if (!user) return;
+    setForm((f) => ({
+      customer_name: f.customer_name || profile?.display_name || "",
+      phone: f.phone || profile?.phone || "",
+      email: f.email || user.email || "",
+      address: f.address || profile?.address || "",
+    }));
+  }, [user, profile]);
+
+  // Redirect if cart empty (after load)
+  useEffect(() => {
+    if (!cartLoading && user && items.length === 0 && !submitting) {
+      navigate({ to: "/cart" });
+    }
+  }, [items, cartLoading, user, navigate, submitting]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!detail) return;
+    if (items.length === 0 || !user) return;
     const parsed = checkoutSchema.safeParse(form);
     if (!parsed.success) {
       const errs: Record<string, string> = {};
@@ -81,62 +66,52 @@ function CheckoutPage() {
     setErrors({});
     setSubmitting(true);
 
-    // Create order (status pending) — payment integration (Flutterwave) happens on Pay step.
-    const { data: order, error } = await supabase
-      .from("orders")
-      .insert({
-        customer_name: parsed.data.customer_name,
-        phone: parsed.data.phone,
-        email: parsed.data.email,
-        address: parsed.data.address,
-        total_price: total,
-      })
-      .select("id, order_code")
-      .single();
+    // Save to profile (so it prefills next time)
+    await supabase
+      .from("profiles")
+      .upsert(
+        {
+          user_id: user.id,
+          display_name: parsed.data.customer_name,
+          phone: parsed.data.phone,
+          address: parsed.data.address,
+        },
+        { onConflict: "user_id" },
+      );
+    refreshProfile();
 
-    if (error || !order) {
+    // Call place-order edge function (validates stock, computes total, creates order, clears cart, sends email)
+    const { data, error } = await supabase.functions.invoke("place-order", {
+      body: {
+        ...parsed.data,
+        items: items.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity })),
+      },
+    });
+
+    if (error || !data?.id) {
       setSubmitting(false);
-      setErrors({ form: "Could not place order. Please try again." });
+      const msg = (data as any)?.error || error?.message || "Could not place order. Please try again.";
+      setErrors({ form: msg });
       return;
     }
 
-    await supabase.from("order_items").insert({
-      order_id: order.id,
-      product_id: detail.product_id,
-      variant_id: detail.variant_id,
-      product_name: detail.product_name,
-      variant_size: detail.size,
-      quantity: qty,
-      price: detail.price,
-    });
-
-    // Fire confirmation email (customer + admin notification). Don't block UX on failure.
-    sendOrderEmail({
-      status: "placed",
-      orderCode: order.order_code,
-      customerName: parsed.data.customer_name,
-      customerEmail: parsed.data.email,
-      total,
-      items: [
-        {
-          product_name: detail.product_name,
-          variant_size: detail.size,
-          quantity: qty,
-          price: detail.price,
-        },
-      ],
-    })
-      .then((r) => console.log("[checkout] sendOrderEmail result:", r))
-      .catch((e) => console.error("[checkout] sendOrderEmail failed:", e));
-
-    // Flutterwave will be wired here. For now we mark as pending and route to success.
-    navigate({ to: "/order/success", search: { id: order.id } });
+    // Cart is cleared server-side; mirror locally
+    await clear();
+    navigate({ to: "/order/success", search: { id: data.id } });
   }
 
-  if (!detail) {
+  if (authLoading || !user) {
     return (
       <SiteShell>
         <div className="mx-auto max-w-3xl px-5 py-24 text-sm text-muted-foreground md:px-8">Loading…</div>
+      </SiteShell>
+    );
+  }
+
+  if (cartLoading) {
+    return (
+      <SiteShell>
+        <div className="mx-auto max-w-3xl px-5 py-24 text-sm text-muted-foreground md:px-8">Loading cart…</div>
       </SiteShell>
     );
   }
@@ -149,26 +124,9 @@ function CheckoutPage() {
 
         <div className="mt-12 grid gap-12 md:grid-cols-[1fr_400px]">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <Field
-              label="Full name"
-              value={form.customer_name}
-              onChange={(v) => setForm({ ...form, customer_name: v })}
-              error={errors.customer_name}
-            />
-            <Field
-              label="Phone number"
-              value={form.phone}
-              onChange={(v) => setForm({ ...form, phone: v })}
-              error={errors.phone}
-              placeholder="+234 ..."
-            />
-            <Field
-              label="Email address"
-              value={form.email}
-              onChange={(v) => setForm({ ...form, email: v })}
-              error={errors.email}
-              placeholder="you@example.com"
-            />
+            <Field label="Full name" value={form.customer_name} onChange={(v) => setForm({ ...form, customer_name: v })} error={errors.customer_name} />
+            <Field label="Phone number" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} error={errors.phone} placeholder="+234 ..." />
+            <Field label="Email address" value={form.email} onChange={(v) => setForm({ ...form, email: v })} error={errors.email} placeholder="you@example.com" />
             <div>
               <label className="text-xs uppercase tracking-luxe text-muted-foreground">Delivery address</label>
               <textarea
@@ -184,35 +142,41 @@ function CheckoutPage() {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || items.length === 0}
               className="w-full bg-primary px-8 py-4 text-xs uppercase tracking-luxe text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
             >
-              {submitting ? "Processing…" : `Pay ${formatNGN(total)}`}
+              {submitting ? "Placing order…" : `Place order — ${formatNGN(subtotal)}`}
             </button>
             <p className="text-xs text-muted-foreground">
-              Payment is processed securely via Flutterwave. You will be redirected after order confirmation.
+              Payment is processed securely. You will receive a confirmation email immediately.
             </p>
           </form>
 
           <aside className="border border-border bg-cream/40 p-6">
-            <p className="text-xs uppercase tracking-luxe text-muted-foreground">Order summary</p>
-            <div className="mt-6 flex gap-4">
-              <div className="h-24 w-20 overflow-hidden bg-background">
-                {detail.image && <img src={detail.image} alt={detail.product_name} className="h-full w-full object-cover" />}
-              </div>
-              <div className="flex-1">
-                <h3 className="font-display text-lg">{detail.product_name}</h3>
-                <p className="text-xs uppercase tracking-luxe text-muted-foreground">{detail.size}</p>
-                <p className="mt-1 text-sm">Qty {qty}</p>
-              </div>
-              <p className="text-sm">{formatNGN(detail.price * qty)}</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-luxe text-muted-foreground">Order summary</p>
+              <Link to="/cart" className="text-xs uppercase tracking-luxe text-muted-foreground hover:text-foreground">Edit</Link>
+            </div>
+            <div className="mt-6 space-y-4">
+              {items.map((it) => (
+                <div key={it.variant_id} className="flex gap-3">
+                  <div className="h-16 w-14 flex-shrink-0 overflow-hidden bg-background">
+                    {it.image && <img src={it.image} alt={it.product_name} className="h-full w-full object-cover" />}
+                  </div>
+                  <div className="flex-1 text-sm">
+                    <p className="font-display">{it.product_name}</p>
+                    <p className="text-xs uppercase tracking-luxe text-muted-foreground">{it.size} · Qty {it.quantity}</p>
+                  </div>
+                  <p className="text-sm">{formatNGN((it.price ?? 0) * it.quantity)}</p>
+                </div>
+              ))}
             </div>
             <div className="mt-6 space-y-2 border-t border-border pt-4 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatNGN(total)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Subtotal ({count})</span><span>{formatNGN(subtotal)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>Calculated after</span></div>
               <div className="mt-3 flex justify-between border-t border-border pt-3 font-display text-xl">
                 <span>Total</span>
-                <span>{formatNGN(total)}</span>
+                <span>{formatNGN(subtotal)}</span>
               </div>
             </div>
           </aside>
