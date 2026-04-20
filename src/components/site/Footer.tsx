@@ -30,7 +30,7 @@ export function Footer() {
               Discover the collection
             </Link>
             <a
-              href="mailto:pelumi@orddify.com"
+              href="mailto:hi@mayssecret.org"
               className="text-xs uppercase tracking-luxe text-primary-foreground/80 hover:text-accent transition-colors"
             >
               hi@mayssecret.org →
