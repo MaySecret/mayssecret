@@ -33,7 +33,7 @@ export function Footer() {
               href="mailto:pelumi@orddify.com"
               className="text-xs uppercase tracking-luxe text-primary-foreground/80 hover:text-accent transition-colors"
             >
-              pelumi@orddify.com →
+              hi@mayssecret.org →
             </a>
           </div>
         </div>
