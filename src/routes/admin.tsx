@@ -1,13 +1,9 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { AuthProvider, useAuth } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/admin")({
-  component: () => (
-    <AuthProvider>
-      <AdminGate />
-    </AuthProvider>
-  ),
+  component: AdminGate,
 });
 
 function AdminGate() {
@@ -18,13 +14,11 @@ function AdminGate() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user && !isLogin) navigate({ to: "/admin/login" });
+    if (!user && !isLogin) navigate({ to: "/login", search: { redirect: "/admin" } });
   }, [user, loading, isLogin, navigate]);
 
   if (loading) return <FullScreen>Loading…</FullScreen>;
-
   if (isLogin) return <Outlet />;
-
   if (!user) return <FullScreen>Redirecting…</FullScreen>;
 
   if (!isAdmin) {

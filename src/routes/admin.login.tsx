@@ -20,7 +20,7 @@ function LoginPage() {
     setLoading(true);
     const fn = mode === "signin"
       ? supabase.auth.signInWithPassword({ email, password })
-      : supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/admin` } });
+      : supabase.auth.signUp({ email, password });
     const { error: err } = await fn;
     setLoading(false);
     if (err) {

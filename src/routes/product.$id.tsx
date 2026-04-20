@@ -165,6 +165,13 @@ function ProductPage() {
 
           <div className="mt-10 flex flex-col gap-3">
             <button
+              onClick={addToCart}
+              disabled={outOfStock || adding}
+              className="w-full border border-foreground bg-background px-8 py-4 text-xs uppercase tracking-luxe text-foreground transition hover:bg-foreground hover:text-background disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {outOfStock ? "Out of stock" : adding ? "Adding…" : added ? "Added ✓" : "Add to cart"}
+            </button>
+            <button
               onClick={buyNow}
               disabled={outOfStock}
               className="w-full bg-primary px-8 py-4 text-xs uppercase tracking-luxe text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
