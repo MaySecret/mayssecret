@@ -14,66 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      cart_items: {
-        Row: {
-          cart_id: string
-          created_at: string
-          id: string
-          quantity: number
-          variant_id: string
-        }
-        Insert: {
-          cart_id: string
-          created_at?: string
-          id?: string
-          quantity: number
-          variant_id: string
-        }
-        Update: {
-          cart_id?: string
-          created_at?: string
-          id?: string
-          quantity?: number
-          variant_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cart_items_cart_id_fkey"
-            columns: ["cart_id"]
-            isOneToOne: false
-            referencedRelation: "carts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cart_items_variant_id_fkey"
-            columns: ["variant_id"]
-            isOneToOne: false
-            referencedRelation: "product_variants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      carts: {
-        Row: {
-          created_at: string
-          id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       order_items: {
         Row: {
           created_at: string
@@ -132,41 +72,6 @@ export type Database = {
           },
         ]
       }
-      order_status_history: {
-        Row: {
-          changed_by: string | null
-          created_at: string
-          id: string
-          note: string | null
-          order_id: string
-          status: string
-        }
-        Insert: {
-          changed_by?: string | null
-          created_at?: string
-          id?: string
-          note?: string | null
-          order_id: string
-          status: string
-        }
-        Update: {
-          changed_by?: string | null
-          created_at?: string
-          id?: string
-          note?: string | null
-          order_id?: string
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_status_history_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       orders: {
         Row: {
           address: string
@@ -175,10 +80,14 @@ export type Database = {
           delivery_status: Database["public"]["Enums"]["delivery_status"]
           email: string
           flutterwave_tx_ref: string | null
+          guest_id: string | null
           id: string
+          kora_reference: string | null
           order_code: string
           payment_status: Database["public"]["Enums"]["payment_status"]
           phone: string
+          shipping_fee: number
+          subtotal: number
           total_price: number
           updated_at: string
           user_id: string | null
@@ -190,10 +99,14 @@ export type Database = {
           delivery_status?: Database["public"]["Enums"]["delivery_status"]
           email?: string
           flutterwave_tx_ref?: string | null
+          guest_id?: string | null
           id?: string
+          kora_reference?: string | null
           order_code?: string
           payment_status?: Database["public"]["Enums"]["payment_status"]
           phone: string
+          shipping_fee?: number
+          subtotal?: number
           total_price: number
           updated_at?: string
           user_id?: string | null
@@ -205,10 +118,14 @@ export type Database = {
           delivery_status?: Database["public"]["Enums"]["delivery_status"]
           email?: string
           flutterwave_tx_ref?: string | null
+          guest_id?: string | null
           id?: string
+          kora_reference?: string | null
           order_code?: string
           payment_status?: Database["public"]["Enums"]["payment_status"]
           phone?: string
+          shipping_fee?: number
+          subtotal?: number
           total_price?: number
           updated_at?: string
           user_id?: string | null
@@ -286,33 +203,21 @@ export type Database = {
         }
         Relationships: []
       }
-      profiles: {
+      site_settings: {
         Row: {
-          address: string | null
-          created_at: string
-          display_name: string | null
           id: string
-          phone: string | null
+          shipping_fee: number
           updated_at: string
-          user_id: string
         }
         Insert: {
-          address?: string | null
-          created_at?: string
-          display_name?: string | null
           id?: string
-          phone?: string | null
+          shipping_fee?: number
           updated_at?: string
-          user_id: string
         }
         Update: {
-          address?: string | null
-          created_at?: string
-          display_name?: string | null
           id?: string
-          phone?: string | null
+          shipping_fee?: number
           updated_at?: string
-          user_id?: string
         }
         Relationships: []
       }
