@@ -48,7 +48,6 @@ function HomePage() {
 
   return (
     <SiteShell>
-      {/* Hero — full-bleed video background */}
       <section className="relative h-[88vh] min-h-[600px] w-full overflow-hidden">
         <video
           className="absolute inset-0 h-full w-full object-cover"
@@ -59,15 +58,13 @@ function HomePage() {
           preload="metadata"
           poster="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=1600&q=70"
         >
-          {/* Local placeholder — replace src/assets/hero.mp4 with your branded video */}
           <source src={heroVideo} type="video/mp4" />
         </video>
-        {/* Soft pink overlay for legibility */}
         <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background/80" />
 
         <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col justify-center px-5 md:px-12">
           <div className="max-w-2xl">
-            <p className="text-xs uppercase tracking-luxe text-foreground/70">The Mays Secret House</p>
+            <p className="text-xs uppercase tracking-luxe text-foreground/70">The May's Secret House</p>
             <h1 className="mt-6 font-display text-5xl leading-[1.05] text-foreground md:text-7xl lg:text-8xl">
               Scents that linger<br />long after you leave.
             </h1>
@@ -90,10 +87,8 @@ function HomePage() {
         </div>
       </section>
 
-      {/* Marquee — Every Scent Tells A Secret */}
       <Marquee />
 
-      {/* Category strip */}
       <section className="border-b border-border/60 bg-cream/60">
         <div className="mx-auto grid max-w-7xl grid-cols-3 divide-x divide-border/60 px-5 md:px-8">
           {[
@@ -113,7 +108,6 @@ function HomePage() {
         </div>
       </section>
 
-      {/* Featured */}
       <section className="mx-auto max-w-7xl px-5 py-20 md:px-8 md:py-28">
         <div className="flex items-end justify-between">
           <div>
@@ -150,12 +144,11 @@ function HomePage() {
         </div>
       </section>
 
-      {/* Story */}
       <section className="bg-accent text-accent-foreground">
         <div className="mx-auto grid max-w-5xl gap-8 px-5 py-24 text-center md:px-8">
           <p className="text-xs uppercase tracking-luxe text-accent-foreground/70">Our craft</p>
           <h2 className="font-display text-4xl leading-tight md:text-5xl">
-            Every Mays Secret is composed by hand,<br />in small batches, with rare materials.
+            Every May's Secret is composed by hand,<br />in small batches, with rare materials.
           </h2>
         </div>
       </section>

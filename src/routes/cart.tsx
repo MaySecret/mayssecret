@@ -1,18 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteShell } from "@/components/site/SiteShell";
 import { useCart } from "@/lib/cart";
-import { useAuth } from "@/lib/auth";
 import { formatNGN } from "@/lib/format";
 import { Trash2, Minus, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/cart")({
   component: CartPage,
-  head: () => ({ meta: [{ title: "Cart — Mays Secret" }] }),
+  head: () => ({ meta: [{ title: "Cart — May's Secret" }] }),
 });
 
 function CartPage() {
   const { items, subtotal, count, loading, update, remove } = useCart();
-  const { user } = useAuth();
 
   return (
     <SiteShell>
@@ -51,11 +49,7 @@ function CartPage() {
                     <p className="mt-1 text-sm">{formatNGN(it.price ?? 0)}</p>
                     <div className="mt-auto flex items-center justify-between pt-3">
                       <div className="flex items-center border border-border">
-                        <button
-                          onClick={() => update(it.variant_id, it.quantity - 1)}
-                          className="p-2 hover:bg-cream"
-                          aria-label="Decrease"
-                        >
+                        <button onClick={() => update(it.variant_id, it.quantity - 1)} className="p-2 hover:bg-cream" aria-label="Decrease">
                           <Minus className="h-3 w-3" />
                         </button>
                         <span className="min-w-10 text-center text-sm">{it.quantity}</span>
@@ -68,18 +62,12 @@ function CartPage() {
                           <Plus className="h-3 w-3" />
                         </button>
                       </div>
-                      <button
-                        onClick={() => remove(it.variant_id)}
-                        className="text-muted-foreground hover:text-destructive"
-                        aria-label="Remove"
-                      >
+                      <button onClick={() => remove(it.variant_id)} className="text-muted-foreground hover:text-destructive" aria-label="Remove">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
-                  <div className="text-right text-sm">
-                    {formatNGN((it.price ?? 0) * it.quantity)}
-                  </div>
+                  <div className="text-right text-sm">{formatNGN((it.price ?? 0) * it.quantity)}</div>
                 </div>
               ))}
             </div>
@@ -88,29 +76,19 @@ function CartPage() {
               <p className="text-xs uppercase tracking-luxe text-muted-foreground">Summary</p>
               <div className="mt-6 space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatNGN(subtotal)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>Calculated next</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span className="text-muted-foreground">Calculated next</span></div>
                 <div className="mt-3 flex justify-between border-t border-border pt-3 font-display text-xl">
-                  <span>Total</span>
+                  <span>Estimated total</span>
                   <span>{formatNGN(subtotal)}</span>
                 </div>
               </div>
-              {user ? (
-                <Link
-                  to="/checkout"
-                  className="mt-6 block w-full bg-primary px-8 py-4 text-center text-xs uppercase tracking-luxe text-primary-foreground transition hover:bg-primary/90"
-                >
-                  Checkout
-                </Link>
-              ) : (
-                <Link
-                  to="/login"
-                  search={{ redirect: "/checkout" }}
-                  className="mt-6 block w-full bg-primary px-8 py-4 text-center text-xs uppercase tracking-luxe text-primary-foreground transition hover:bg-primary/90"
-                >
-                  Sign in to checkout
-                </Link>
-              )}
-              <p className="mt-3 text-xs text-muted-foreground">An account is required to place an order.</p>
+              <Link
+                to="/checkout"
+                className="mt-6 block w-full bg-primary px-8 py-4 text-center text-xs uppercase tracking-luxe text-primary-foreground transition hover:bg-primary/90"
+              >
+                Checkout
+              </Link>
+              <p className="mt-3 text-xs text-muted-foreground">No account needed. Pay securely with Kora.</p>
             </aside>
           </div>
         )}

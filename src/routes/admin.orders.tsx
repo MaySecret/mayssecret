@@ -6,7 +6,8 @@ import { sendOrderEmail } from "@/lib/email";
 
 type Order = {
   id: string; order_code: string; customer_name: string; phone: string; address: string; email: string;
-  total_price: number; payment_status: "pending"|"paid"|"failed"; delivery_status: "processing"|"shipped"|"delivered";
+  subtotal: number; shipping_fee: number; total_price: number;
+  payment_status: "pending"|"paid"|"failed"; delivery_status: "processing"|"shipped"|"delivered"|"cancelled";
   created_at: string;
   order_items: { product_name: string; variant_size: string; quantity: number; price: number }[];
 };
@@ -20,7 +21,7 @@ function OrdersPage() {
   async function load() {
     const { data } = await supabase
       .from("orders")
-      .select("id, order_code, customer_name, phone, address, email, total_price, payment_status, delivery_status, created_at, order_items(product_name, variant_size, quantity, price)")
+      .select("id, order_code, customer_name, phone, address, email, subtotal, shipping_fee, total_price, payment_status, delivery_status, created_at, order_items(product_name, variant_size, quantity, price)")
       .order("created_at", { ascending: false });
     setOrders((data as unknown as Order[]) ?? []);
   }
@@ -34,6 +35,8 @@ function OrdersPage() {
       orderCode: o.order_code,
       customerName: o.customer_name,
       customerEmail: o.email ?? "",
+      subtotal: Number(o.subtotal),
+      shipping: Number(o.shipping_fee),
       total: Number(o.total_price),
       items: o.order_items.map((it) => ({
         product_name: it.product_name,
@@ -75,8 +78,9 @@ function OrdersPage() {
             </button>
             {open === o.id && (
               <div className="space-y-4 border-t border-border bg-cream/30 px-4 py-4 text-sm">
-                <div><span className="text-xs uppercase tracking-luxe text-muted-foreground">Address: </span>{o.address}</div>
+                <div><span className="text-xs uppercase tracking-luxe text-muted-foreground">Email: </span>{o.email}</div>
                 <div><span className="text-xs uppercase tracking-luxe text-muted-foreground">Phone: </span>{o.phone}</div>
+                <div><span className="text-xs uppercase tracking-luxe text-muted-foreground">Address: </span>{o.address}</div>
                 <div>
                   <p className="text-xs uppercase tracking-luxe text-muted-foreground">Items</p>
                   <ul className="mt-1 space-y-1">
@@ -84,6 +88,11 @@ function OrdersPage() {
                       <li key={i}>{it.product_name} — {it.variant_size} × {it.quantity} ({formatNGN(it.price * it.quantity)})</li>
                     ))}
                   </ul>
+                </div>
+                <div className="flex flex-wrap gap-6 border-t border-border pt-3 text-xs">
+                  <span className="text-muted-foreground">Subtotal: <span className="text-foreground">{formatNGN(Number(o.subtotal))}</span></span>
+                  <span className="text-muted-foreground">Shipping: <span className="text-foreground">{formatNGN(Number(o.shipping_fee))}</span></span>
+                  <span className="text-muted-foreground">Total: <span className="text-foreground">{formatNGN(Number(o.total_price))}</span></span>
                 </div>
                 <div className="flex flex-wrap gap-3 pt-2">
                   <Action label="Mark paid" onClick={() => setPayment(o.id, "paid")} />

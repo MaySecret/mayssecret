@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useAuth } from "@/lib/auth";
+import { useAdminAuth } from "@/lib/admin-auth";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/admin")({
@@ -7,14 +7,14 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminGate() {
-  const { user, isAdmin, loading, signOut } = useAuth();
+  const { user, isAdmin, loading, signOut } = useAdminAuth();
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const isLogin = path === "/admin/login";
 
   useEffect(() => {
     if (loading) return;
-    if (!user && !isLogin) navigate({ to: "/login", search: { redirect: "/admin" } });
+    if (!user && !isLogin) navigate({ to: "/admin/login" });
   }, [user, loading, isLogin, navigate]);
 
   if (loading) return <FullScreen>Loading…</FullScreen>;
@@ -40,7 +40,7 @@ function AdminGate() {
     <div className="flex min-h-screen bg-background">
       <aside className="hidden w-60 flex-shrink-0 border-r border-border bg-cream/40 md:block">
         <div className="p-6">
-          <Link to="/" className="font-display text-2xl">Mays Secret<span className="text-accent">.</span></Link>
+          <Link to="/" className="font-display text-2xl">May's Secret<span className="text-accent">.</span></Link>
           <p className="mt-1 text-xs uppercase tracking-luxe text-muted-foreground">Admin</p>
         </div>
         <nav className="px-3 pb-6 text-sm">
@@ -48,6 +48,7 @@ function AdminGate() {
           <NavItem to="/admin/products">Products</NavItem>
           <NavItem to="/admin/orders">Orders</NavItem>
           <NavItem to="/admin/inventory">Inventory</NavItem>
+          <NavItem to="/admin/settings">Settings</NavItem>
         </nav>
         <button
           onClick={signOut}

@@ -1,7 +1,8 @@
 // Edge Function: place-order
-// Auth required. Validates stock, recomputes totals server-side,
-// creates order + items, decrements stock, clears the user's cart.
-// Then triggers the customer/admin confirmation email.
+// PUBLIC — no auth required (guest checkout).
+// Validates payload + stock + prices server-side, creates a PENDING order,
+// initializes Kora payment, and returns the checkout URL.
+// Stock is decremented only after Kora webhook confirms payment.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -16,30 +17,24 @@ type Payload = {
   phone: string;
   email: string;
   address: string;
+  guest_id?: string;
   items: { variant_id: string; quantity: number }[];
 };
 
+const KORA_API = "https://api.korapay.com/merchant/api/v1";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-    // Verify the caller (must be authenticated)
-    const authHeader = req.headers.get("Authorization") ?? "";
-    if (!authHeader.startsWith("Bearer ")) {
-      return json({ error: "Unauthorized" }, 401);
-    }
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) return json({ error: "Unauthorized" }, 401);
-    const user = userData.user;
+    const KORA_SECRET = Deno.env.get("KORA_SECRET_KEY") ?? "";
 
     const payload = (await req.json()) as Payload;
+
+    // ---- Validate payload ----
     if (
       !payload?.customer_name?.trim() ||
       !payload?.phone?.trim() ||
@@ -48,38 +43,41 @@ Deno.serve(async (req) => {
       !Array.isArray(payload.items) ||
       payload.items.length === 0
     ) {
-      return json({ error: "Invalid payload" }, 400);
+      return json({ error: "Missing or invalid checkout details." }, 400);
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email.trim())) {
+      return json({ error: "Invalid email address." }, 400);
     }
     for (const it of payload.items) {
       if (!it.variant_id || typeof it.quantity !== "number" || it.quantity <= 0 || it.quantity > 100) {
-        return json({ error: "Invalid item" }, 400);
+        return json({ error: "Invalid item in cart." }, 400);
       }
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Fetch authoritative variant data
-    const variantIds = payload.items.map((i) => i.variant_id);
+    // ---- Fetch authoritative variant data ----
+    const variantIds = [...new Set(payload.items.map((i) => i.variant_id))];
     const { data: variants, error: vErr } = await admin
       .from("product_variants")
       .select("id, size, price, stock, product_id, products(name, images)")
       .in("id", variantIds);
     if (vErr || !variants || variants.length !== variantIds.length) {
-      return json({ error: "One or more items are no longer available" }, 400);
+      return json({ error: "One or more items are no longer available." }, 400);
     }
 
-    // Validate stock and compute total
+    // ---- Validate stock + compute subtotal server-side ----
     const orderItems: any[] = [];
-    let total = 0;
+    let subtotal = 0;
     for (const it of payload.items) {
       const v = variants.find((x: any) => x.id === it.variant_id);
-      if (!v) return json({ error: "Item not found" }, 400);
+      if (!v) return json({ error: "Item not found." }, 400);
       if (v.stock < it.quantity) {
         const prodName = (v.products as any)?.name ?? "Item";
-        return json({ error: `${prodName} (${v.size}) — only ${v.stock} in stock` }, 409);
+        return json({ error: `${prodName} (${v.size}) — only ${v.stock} in stock.` }, 409);
       }
       const price = Number(v.price);
-      total += price * it.quantity;
+      subtotal += price * it.quantity;
       orderItems.push({
         variant_id: v.id,
         product_id: v.product_id,
@@ -90,76 +88,109 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create order
+    // ---- Shipping fee from settings ----
+    const { data: settings } = await admin
+      .from("site_settings")
+      .select("shipping_fee")
+      .limit(1)
+      .maybeSingle();
+    const shipping_fee = settings ? Number(settings.shipping_fee) : 0;
+    const total = subtotal + shipping_fee;
+
+    // ---- Create PENDING order ----
     const { data: order, error: oErr } = await admin
       .from("orders")
       .insert({
-        user_id: user.id,
         customer_name: payload.customer_name.trim(),
         phone: payload.phone.trim(),
         email: payload.email.trim(),
         address: payload.address.trim(),
+        guest_id: payload.guest_id ?? null,
+        subtotal,
+        shipping_fee,
         total_price: total,
+        payment_status: "pending",
+        delivery_status: "processing",
       })
       .select("id, order_code")
       .single();
     if (oErr || !order) {
       console.error("[place-order] order insert failed:", oErr);
-      return json({ error: "Could not create order" }, 500);
+      return json({ error: "Could not create order." }, 500);
     }
 
-    // Insert items
+    // ---- Insert items ----
     const { error: iErr } = await admin
       .from("order_items")
       .insert(orderItems.map((oi) => ({ ...oi, order_id: order.id })));
     if (iErr) {
       console.error("[place-order] items insert failed:", iErr);
       await admin.from("orders").delete().eq("id", order.id);
-      return json({ error: "Could not save items" }, 500);
+      return json({ error: "Could not save items." }, 500);
     }
 
-    // Decrement stock (best-effort, in serial)
-    for (const it of payload.items) {
-      const v = variants.find((x: any) => x.id === it.variant_id)!;
-      await admin.from("product_variants").update({ stock: v.stock - it.quantity }).eq("id", v.id);
+    // ---- Initialize Kora payment ----
+    let checkout_url: string | null = null;
+    let kora_reference: string | null = null;
+
+    if (!KORA_SECRET) {
+      console.error("[place-order] KORA_SECRET_KEY missing — cannot initialize payment.");
+      return json({
+        order_id: order.id,
+        order_code: order.order_code,
+        payment_status: "pending",
+        error: "Payment is not configured. Please contact the store.",
+      }, 200);
     }
 
-    // Initial status history
-    await admin.from("order_status_history").insert({
-      order_id: order.id,
-      status: "processing",
-      note: "Order placed",
-      changed_by: user.id,
-    });
-
-    // Clear user's cart
-    const { data: cart } = await admin.from("carts").select("id").eq("user_id", user.id).maybeSingle();
-    if (cart) await admin.from("cart_items").delete().eq("cart_id", cart.id);
-
-    // Fire confirmation email (non-blocking)
     try {
-      await fetch(`${SUPABASE_URL}/functions/v1/send-order-email`, {
+      const reference = `MS-${order.order_code}-${Date.now()}`;
+      const origin = req.headers.get("origin") ?? new URL(req.url).origin;
+      const redirect_url = `${origin}/order/success?ref=${encodeURIComponent(order.order_code)}`;
+
+      const koraRes = await fetch(`${KORA_API}/charges/initialize`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}` },
+        headers: {
+          Authorization: `Bearer ${KORA_SECRET}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          status: "placed",
-          orderCode: order.order_code,
-          customerName: payload.customer_name,
-          customerEmail: payload.email,
-          total,
-          items: orderItems.map((oi) => ({
-            product_name: oi.product_name,
-            variant_size: oi.variant_size,
-            quantity: oi.quantity,
-            price: oi.price,
-          })),
+          amount: total,
+          currency: "NGN",
+          reference,
+          redirect_url,
+          notification_url: `${SUPABASE_URL}/functions/v1/kora-webhook`,
+          narration: `May's Secret order ${order.order_code}`,
+          customer: {
+            name: payload.customer_name.trim(),
+            email: payload.email.trim(),
+          },
+          metadata: {
+            order_id: order.id,
+            order_code: order.order_code,
+          },
         }),
       });
+      const koraJson = await koraRes.json();
+      if (!koraRes.ok || !koraJson?.status) {
+        console.error("[place-order] Kora init failed:", koraJson);
+        return json({ error: koraJson?.message || "Could not initialize payment." }, 502);
+      }
+      checkout_url = koraJson?.data?.checkout_url ?? null;
+      kora_reference = reference;
+      await admin.from("orders").update({ kora_reference: reference }).eq("id", order.id);
     } catch (e) {
-      console.error("[place-order] email trigger failed:", e);
+      console.error("[place-order] Kora init error:", e);
+      return json({ error: "Payment service unavailable. Please try again." }, 502);
     }
 
-    return json({ id: order.id, order_code: order.order_code }, 200);
+    return json({
+      order_id: order.id,
+      order_code: order.order_code,
+      payment_status: "pending",
+      checkout_url,
+      kora_reference,
+    }, 200);
   } catch (e) {
     console.error("[place-order] error:", e);
     return json({ error: String(e) }, 500);

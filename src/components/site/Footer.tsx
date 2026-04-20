@@ -1,5 +1,15 @@
 import { Link } from "@tanstack/react-router";
+import { Instagram, Facebook } from "lucide-react";
 import logo from "@/assets/logo-2.png";
+
+// X (Twitter) icon — simple SVG (lucide doesn't ship X mark)
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M18.244 2H21.5l-7.5 8.57L23 22h-6.852l-5.366-6.99L4.6 22H1.34l8.06-9.21L1 2h7.04l4.847 6.4L18.244 2zm-2.4 18h1.86L7.24 4H5.27l10.575 16z" />
+    </svg>
+  );
+}
 
 export function Footer() {
   return (
@@ -33,10 +43,40 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-5 py-16 md:px-8">
         <div className="grid gap-12 md:grid-cols-12">
           <div className="md:col-span-4">
-            <img src={logo} alt="Mays Secret" className="h-12 w-auto brightness-0 invert" />
+            <img src={logo} alt="May's Secret" className="h-12 w-auto brightness-0 invert" />
             <p className="mt-5 max-w-xs text-sm leading-relaxed text-primary-foreground/70">
               A house of fragrances composed slowly, in small batches, for those who believe scent is memory.
             </p>
+            {/* Social icons */}
+            <div className="mt-6 flex items-center gap-4">
+              <a
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="text-primary-foreground/70 transition-colors hover:text-accent"
+              >
+                <Instagram className="h-5 w-5" />
+              </a>
+              <a
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="X (Twitter)"
+                className="text-primary-foreground/70 transition-colors hover:text-accent"
+              >
+                <XIcon className="h-4 w-4" />
+              </a>
+              <a
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Facebook"
+                className="text-primary-foreground/70 transition-colors hover:text-accent"
+              >
+                <Facebook className="h-5 w-5" />
+              </a>
+            </div>
           </div>
 
           <div className="text-sm md:col-span-2">
@@ -70,7 +110,7 @@ export function Footer() {
         </div>
 
         <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-primary-foreground/15 pt-8 text-xs uppercase tracking-luxe text-primary-foreground/50 md:flex-row md:items-center">
-          <p>© {new Date().getFullYear()} Mays Secret. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} May's Secret. All rights reserved.</p>
           <p>Composed in Lagos · Worn everywhere</p>
         </div>
       </div>
