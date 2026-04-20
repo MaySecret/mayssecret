@@ -1,8 +1,8 @@
 // Supabase Edge Function: send-order-email
 // Sends order confirmation/status emails via Resend.
 
-const FROM = "May's Secret <support@orddify.com>";
-const ADMIN_EMAIL = "support@orddify.com";
+const FROM = "May's Secret <hi@mayssecret.org>";
+const ADMIN_EMAIL = "hi@mayssecret.org";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
