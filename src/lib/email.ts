@@ -5,6 +5,8 @@ export type OrderEmailPayload = {
   orderCode: string;
   customerName: string;
   customerEmail: string;
+  subtotal: number;
+  shipping: number;
   total: number;
   items: Array<{
     product_name: string;
@@ -15,9 +17,7 @@ export type OrderEmailPayload = {
 };
 
 export async function sendOrderEmail(payload: OrderEmailPayload) {
-  const { data, error } = await supabase.functions.invoke("send-order-email", {
-    body: payload,
-  });
+  const { data, error } = await supabase.functions.invoke("send-order-email", { body: payload });
   if (error) {
     console.error("[sendOrderEmail] invoke error:", error);
     return { sent: false, error: error.message };

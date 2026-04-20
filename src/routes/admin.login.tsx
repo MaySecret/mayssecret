@@ -33,7 +33,7 @@ function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-6">
       <div className="w-full max-w-sm">
-        <p className="text-xs uppercase tracking-luxe text-muted-foreground">Mays Secret</p>
+        <p className="text-xs uppercase tracking-luxe text-muted-foreground">May's Secret</p>
         <h1 className="mt-2 font-display text-4xl">Admin {mode === "signin" ? "sign in" : "sign up"}</h1>
         <form onSubmit={submit} className="mt-8 space-y-4">
           <div>

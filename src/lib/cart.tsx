@@ -1,11 +1,10 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 
 export type CartItem = {
   variant_id: string;
   quantity: number;
-  // Hydrated client-side for display:
+  // Hydrated for display
   product_id?: string;
   product_name?: string;
   size?: string;
@@ -19,31 +18,45 @@ type CartCtx = {
   count: number;
   subtotal: number;
   loading: boolean;
+  guestId: string;
   add: (variantId: string, qty?: number) => Promise<void>;
   update: (variantId: string, qty: number) => Promise<void>;
   remove: (variantId: string) => Promise<void>;
-  clear: () => Promise<void>;
+  clear: () => void;
   refresh: () => Promise<void>;
 };
 
 const Ctx = createContext<CartCtx | undefined>(undefined);
-const STORAGE_KEY = "ms_cart_v1";
+const STORAGE_KEY = "ms_cart_v2";
+const GUEST_KEY = "ms_guest_id_v1";
 
-function readLocal(): CartItem[] {
+function readLocal(): { variant_id: string; quantity: number }[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as CartItem[]) : [];
+    return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 function writeLocal(items: CartItem[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity }))));
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(items.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity }))),
+  );
+}
+function getOrCreateGuestId(): string {
+  if (typeof window === "undefined") return "";
+  let id = localStorage.getItem(GUEST_KEY);
+  if (!id) {
+    id = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+    localStorage.setItem(GUEST_KEY, id);
+  }
+  return id;
 }
 
-async function hydrate(items: CartItem[]): Promise<CartItem[]> {
+async function hydrate(items: { variant_id: string; quantity: number }[]): Promise<CartItem[]> {
   if (items.length === 0) return [];
   const ids = items.map((i) => i.variant_id);
   const { data } = await supabase
@@ -73,169 +86,59 @@ async function hydrate(items: CartItem[]): Promise<CartItem[]> {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cartId, setCartId] = useState<string | null>(null);
-  const [mergedFor, setMergedFor] = useState<string | null>(null);
+  const [guestId, setGuestId] = useState("");
 
-  // Initial load + auth changes
+  const refresh = useCallback(async () => {
+    const hydrated = await hydrate(readLocal());
+    setItems(hydrated);
+  }, []);
+
   useEffect(() => {
-    if (authLoading) return;
-    (async () => {
-      setLoading(true);
-      if (user) {
-        // Get/create cart
-        let { data: cart } = await supabase.from("carts").select("id").eq("user_id", user.id).maybeSingle();
-        if (!cart) {
-          const { data: newCart } = await supabase
-            .from("carts")
-            .insert({ user_id: user.id })
-            .select("id")
-            .single();
-          cart = newCart;
-        }
-        setCartId(cart!.id);
-
-        // Merge guest cart on first login
-        if (mergedFor !== user.id) {
-          const guest = readLocal();
-          if (guest.length > 0) {
-            for (const g of guest) {
-              const { data: existing } = await supabase
-                .from("cart_items")
-                .select("id, quantity")
-                .eq("cart_id", cart!.id)
-                .eq("variant_id", g.variant_id)
-                .maybeSingle();
-              if (existing) {
-                await supabase
-                  .from("cart_items")
-                  .update({ quantity: existing.quantity + g.quantity })
-                  .eq("id", existing.id);
-              } else {
-                await supabase
-                  .from("cart_items")
-                  .insert({ cart_id: cart!.id, variant_id: g.variant_id, quantity: g.quantity });
-              }
-            }
-            localStorage.removeItem(STORAGE_KEY);
-          }
-          setMergedFor(user.id);
-        }
-
-        const { data: rows } = await supabase
-          .from("cart_items")
-          .select("variant_id, quantity")
-          .eq("cart_id", cart!.id);
-        const hydrated = await hydrate((rows ?? []) as CartItem[]);
-        setItems(hydrated);
-      } else {
-        setCartId(null);
-        const local = readLocal();
-        const hydrated = await hydrate(local);
-        setItems(hydrated);
-      }
-      setLoading(false);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, authLoading]);
-
-  // Realtime sync for logged-in users
-  useEffect(() => {
-    if (!cartId) return;
-    const ch = supabase
-      .channel(`cart:${cartId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "cart_items", filter: `cart_id=eq.${cartId}` },
-        () => refresh(),
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartId]);
-
-  async function refresh() {
-    if (user && cartId) {
-      const { data: rows } = await supabase
-        .from("cart_items")
-        .select("variant_id, quantity")
-        .eq("cart_id", cartId);
-      const hydrated = await hydrate((rows ?? []) as CartItem[]);
-      setItems(hydrated);
-    } else {
-      const hydrated = await hydrate(readLocal());
-      setItems(hydrated);
-    }
-  }
+    setGuestId(getOrCreateGuestId());
+    refresh().finally(() => setLoading(false));
+  }, [refresh]);
 
   async function add(variantId: string, qty = 1) {
-    if (user && cartId) {
-      const { data: existing } = await supabase
-        .from("cart_items")
-        .select("id, quantity")
-        .eq("cart_id", cartId)
-        .eq("variant_id", variantId)
-        .maybeSingle();
-      if (existing) {
-        await supabase
-          .from("cart_items")
-          .update({ quantity: existing.quantity + qty })
-          .eq("id", existing.id);
-      } else {
-        await supabase.from("cart_items").insert({ cart_id: cartId, variant_id: variantId, quantity: qty });
-      }
-    } else {
-      const local = readLocal();
-      const idx = local.findIndex((i) => i.variant_id === variantId);
-      if (idx >= 0) local[idx].quantity += qty;
-      else local.push({ variant_id: variantId, quantity: qty });
-      writeLocal(local);
-    }
+    const local = readLocal();
+    const idx = local.findIndex((i) => i.variant_id === variantId);
+    if (idx >= 0) local[idx].quantity += qty;
+    else local.push({ variant_id: variantId, quantity: qty });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
     await refresh();
   }
 
   async function update(variantId: string, qty: number) {
     if (qty <= 0) return remove(variantId);
-    if (user && cartId) {
-      await supabase.from("cart_items").update({ quantity: qty }).eq("cart_id", cartId).eq("variant_id", variantId);
-    } else {
-      const local = readLocal();
-      const idx = local.findIndex((i) => i.variant_id === variantId);
-      if (idx >= 0) {
-        local[idx].quantity = qty;
-        writeLocal(local);
-      }
+    const local = readLocal();
+    const idx = local.findIndex((i) => i.variant_id === variantId);
+    if (idx >= 0) {
+      local[idx].quantity = qty;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
     }
     await refresh();
   }
 
   async function remove(variantId: string) {
-    if (user && cartId) {
-      await supabase.from("cart_items").delete().eq("cart_id", cartId).eq("variant_id", variantId);
-    } else {
-      writeLocal(readLocal().filter((i) => i.variant_id !== variantId));
-    }
+    const local = readLocal().filter((i) => i.variant_id !== variantId);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
     await refresh();
   }
 
-  async function clear() {
-    if (user && cartId) {
-      await supabase.from("cart_items").delete().eq("cart_id", cartId);
-    } else {
-      writeLocal([]);
-    }
+  function clear() {
+    if (typeof window !== "undefined") localStorage.removeItem(STORAGE_KEY);
     setItems([]);
   }
+
+  // Avoid unused var warning; the map writer is local to refresh path.
+  void writeLocal;
 
   const count = items.reduce((s, i) => s + i.quantity, 0);
   const subtotal = items.reduce((s, i) => s + (i.price ?? 0) * i.quantity, 0);
 
   return (
-    <Ctx.Provider value={{ items, count, subtotal, loading, add, update, remove, clear, refresh }}>
+    <Ctx.Provider value={{ items, count, subtotal, loading, guestId, add, update, remove, clear, refresh }}>
       {children}
     </Ctx.Provider>
   );

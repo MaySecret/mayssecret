@@ -1,1 +1,10 @@
 project_id = "mzaxskkthcsacjecexlg"
+
+[functions.place-order]
+verify_jwt = false
+
+[functions.kora-webhook]
+verify_jwt = false
+
+[functions.send-order-email]
+verify_jwt = false

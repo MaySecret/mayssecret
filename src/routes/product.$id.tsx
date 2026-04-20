@@ -39,7 +39,6 @@ function ProductPage() {
         .single();
       if (data) {
         const p = data as unknown as Product;
-        // Sort variants by size (numeric extraction)
         p.product_variants.sort((a, b) => parseFloat(a.size) - parseFloat(b.size));
         setProduct(p);
         setVariantId(p.product_variants[0]?.id ?? null);
@@ -82,7 +81,6 @@ function ProductPage() {
   return (
     <SiteShell>
       <div className="mx-auto grid max-w-7xl gap-12 px-5 py-12 md:grid-cols-2 md:gap-16 md:px-8 md:py-20">
-        {/* Gallery */}
         <div>
           <div className="aspect-[4/5] overflow-hidden bg-cream">
             <img
@@ -106,7 +104,6 @@ function ProductPage() {
           )}
         </div>
 
-        {/* Info */}
         <div className="md:pt-6">
           <p className="text-xs uppercase tracking-luxe text-muted-foreground">{product.category}</p>
           <h1 className="mt-3 font-display text-4xl md:text-5xl">{product.name}</h1>
@@ -125,7 +122,6 @@ function ProductPage() {
 
           <p className="mt-8 leading-relaxed text-foreground/85">{product.description}</p>
 
-          {/* Variant selector */}
           <div className="mt-10">
             <p className="text-xs uppercase tracking-luxe text-muted-foreground">Size</p>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -146,7 +142,6 @@ function ProductPage() {
             </div>
           </div>
 
-          {/* Qty */}
           {!outOfStock && (
             <div className="mt-8 flex items-center gap-4">
               <p className="text-xs uppercase tracking-luxe text-muted-foreground">Quantity</p>

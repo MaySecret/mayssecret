@@ -4,12 +4,12 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteShell } from "@/components/site/SiteShell";
 import { formatNGN } from "@/lib/format";
-import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
+import { fetchSiteSettings } from "@/lib/settings";
 
 export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
-  head: () => ({ meta: [{ title: "Checkout — Mays Secret" }] }),
+  head: () => ({ meta: [{ title: "Checkout — May's Secret" }] }),
 });
 
 const checkoutSchema = z.object({
@@ -19,43 +19,49 @@ const checkoutSchema = z.object({
   address: z.string().trim().min(10, "Full delivery address required").max(500),
 });
 
+const PROFILE_KEY = "ms_checkout_profile_v1";
+
+function readProfile() {
+  if (typeof window === "undefined") return null;
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "null"); } catch { return null; }
+}
+
 function CheckoutPage() {
-  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
-  const { items, subtotal, count, clear, loading: cartLoading } = useCart();
+  const { items, subtotal, count, loading: cartLoading, guestId } = useCart();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ customer_name: "", phone: "", email: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [shipping, setShipping] = useState<number>(0);
+  const [shippingLoading, setShippingLoading] = useState(true);
 
-  // Redirect unauthenticated users
+  // Prefill from saved profile (last checkout)
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate({ to: "/login", search: { redirect: "/checkout" } });
-    }
-  }, [user, authLoading, navigate]);
+    const p = readProfile();
+    if (p) setForm((f) => ({ ...f, ...p }));
+  }, []);
 
-  // Prefill from profile + auth email
+  // Fetch shipping fee
   useEffect(() => {
-    if (!user) return;
-    setForm((f) => ({
-      customer_name: f.customer_name || profile?.display_name || "",
-      phone: f.phone || profile?.phone || "",
-      email: f.email || user.email || "",
-      address: f.address || profile?.address || "",
-    }));
-  }, [user, profile]);
+    fetchSiteSettings().then((s) => {
+      setShipping(s.shipping_fee);
+      setShippingLoading(false);
+    });
+  }, []);
 
-  // Redirect if cart empty (after load)
+  // Redirect if cart empty
   useEffect(() => {
-    if (!cartLoading && user && items.length === 0 && !submitting) {
+    if (!cartLoading && items.length === 0 && !submitting) {
       navigate({ to: "/cart" });
     }
-  }, [items, cartLoading, user, navigate, submitting]);
+  }, [items, cartLoading, navigate, submitting]);
+
+  const total = subtotal + shipping;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (items.length === 0 || !user) return;
+    if (items.length === 0) return;
     const parsed = checkoutSchema.safeParse(form);
     if (!parsed.success) {
       const errs: Record<string, string> = {};
@@ -66,52 +72,40 @@ function CheckoutPage() {
     setErrors({});
     setSubmitting(true);
 
-    // Save to profile (so it prefills next time)
-    await supabase
-      .from("profiles")
-      .upsert(
-        {
-          user_id: user.id,
-          display_name: parsed.data.customer_name,
-          phone: parsed.data.phone,
-          address: parsed.data.address,
-        },
-        { onConflict: "user_id" },
-      );
-    refreshProfile();
+    // Save for prefill next time
+    if (typeof window !== "undefined") {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(parsed.data));
+    }
 
-    // Call place-order edge function (validates stock, computes total, creates order, clears cart, sends email)
     const { data, error } = await supabase.functions.invoke("place-order", {
       body: {
         ...parsed.data,
+        guest_id: guestId,
         items: items.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity })),
       },
     });
 
-    if (error || !data?.id) {
+    if (error || !data?.order_id) {
       setSubmitting(false);
       const msg = (data as any)?.error || error?.message || "Could not place order. Please try again.";
       setErrors({ form: msg });
       return;
     }
 
-    // Cart is cleared server-side; mirror locally
-    await clear();
-    navigate({ to: "/order/success", search: { id: data.id } });
+    // Redirect to Kora checkout if URL is provided
+    if (data.checkout_url) {
+      window.location.href = data.checkout_url;
+      return;
+    }
+
+    // Fallback: go to success page (e.g., zero-amount or no payment URL)
+    navigate({ to: "/order/success", search: { ref: data.order_code } });
   }
 
-  if (authLoading || !user) {
+  if (cartLoading || shippingLoading) {
     return (
       <SiteShell>
         <div className="mx-auto max-w-3xl px-5 py-24 text-sm text-muted-foreground md:px-8">Loading…</div>
-      </SiteShell>
-    );
-  }
-
-  if (cartLoading) {
-    return (
-      <SiteShell>
-        <div className="mx-auto max-w-3xl px-5 py-24 text-sm text-muted-foreground md:px-8">Loading cart…</div>
       </SiteShell>
     );
   }
@@ -145,10 +139,10 @@ function CheckoutPage() {
               disabled={submitting || items.length === 0}
               className="w-full bg-primary px-8 py-4 text-xs uppercase tracking-luxe text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
             >
-              {submitting ? "Placing order…" : `Place order — ${formatNGN(subtotal)}`}
+              {submitting ? "Redirecting to payment…" : `Pay now — ${formatNGN(total)}`}
             </button>
             <p className="text-xs text-muted-foreground">
-              Payment is processed securely. You will receive a confirmation email immediately.
+              Payment is processed securely via Kora. You'll receive a confirmation email immediately after payment.
             </p>
           </form>
 
@@ -173,10 +167,10 @@ function CheckoutPage() {
             </div>
             <div className="mt-6 space-y-2 border-t border-border pt-4 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Subtotal ({count})</span><span>{formatNGN(subtotal)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>Calculated after</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Shipping fee</span><span>{formatNGN(shipping)}</span></div>
               <div className="mt-3 flex justify-between border-t border-border pt-3 font-display text-xl">
                 <span>Total</span>
-                <span>{formatNGN(subtotal)}</span>
+                <span>{formatNGN(total)}</span>
               </div>
             </div>
           </aside>
