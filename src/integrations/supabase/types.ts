@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      cart_items: {
+        Row: {
+          cart_id: string
+          created_at: string
+          id: string
+          quantity: number
+          variant_id: string
+        }
+        Insert: {
+          cart_id: string
+          created_at?: string
+          id?: string
+          quantity: number
+          variant_id: string
+        }
+        Update: {
+          cart_id?: string
+          created_at?: string
+          id?: string
+          quantity?: number
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      carts: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string
@@ -72,6 +132,41 @@ export type Database = {
           },
         ]
       }
+      order_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          id: string
+          note: string | null
+          order_id: string
+          status: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_id: string
+          status: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           address: string
@@ -86,6 +181,7 @@ export type Database = {
           phone: string
           total_price: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           address: string
@@ -100,6 +196,7 @@ export type Database = {
           phone: string
           total_price: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           address?: string
@@ -114,6 +211,7 @@ export type Database = {
           phone?: string
           total_price?: number
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -188,6 +286,36 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          address: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -224,7 +352,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      delivery_status: "processing" | "shipped" | "delivered"
+      delivery_status: "processing" | "shipped" | "delivered" | "cancelled"
       payment_status: "pending" | "paid" | "failed"
       product_category: "men" | "women" | "unisex"
     }
@@ -355,7 +483,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      delivery_status: ["processing", "shipped", "delivered"],
+      delivery_status: ["processing", "shipped", "delivered", "cancelled"],
       payment_status: ["pending", "paid", "failed"],
       product_category: ["men", "women", "unisex"],
     },
