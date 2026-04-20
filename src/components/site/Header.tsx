@@ -1,7 +1,13 @@
 import { Link } from "@tanstack/react-router";
+import { ShoppingBag, User } from "lucide-react";
 import logo from "@/assets/logo-1.png";
+import { useCart } from "@/lib/cart";
+import { useAuth } from "@/lib/auth";
 
 export function Header() {
+  const { count } = useCart();
+  const { user } = useAuth();
+
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 md:px-8">
@@ -15,9 +21,23 @@ export function Header() {
           <Link to="/shop" search={{ category: "women" }} className="hover:text-foreground transition-colors">Women</Link>
           <Link to="/shop" search={{ category: "unisex" }} className="hover:text-foreground transition-colors">Unisex</Link>
         </nav>
-        <Link to="/shop" className="text-xs uppercase tracking-luxe text-foreground hover:text-accent transition-colors">
-          Discover
-        </Link>
+        <div className="flex items-center gap-5">
+          <Link
+            to={user ? "/account" : "/login"}
+            className="text-foreground hover:text-accent transition-colors"
+            aria-label={user ? "My account" : "Sign in"}
+          >
+            <User className="h-5 w-5" />
+          </Link>
+          <Link to="/cart" className="relative text-foreground hover:text-accent transition-colors" aria-label="Cart">
+            <ShoppingBag className="h-5 w-5" />
+            {count > 0 && (
+              <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+                {count}
+              </span>
+            )}
+          </Link>
+        </div>
       </div>
     </header>
   );

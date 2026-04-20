@@ -1,4 +1,6 @@
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { AuthProvider } from "@/lib/auth";
+import { CartProvider } from "@/lib/cart";
 
 import appCss from "../styles.css?url";
 
@@ -26,7 +28,13 @@ export const Route = createRootRoute({
     ],
   }),
   shellComponent: RootShell,
-  component: () => <Outlet />,
+  component: () => (
+    <AuthProvider>
+      <CartProvider>
+        <Outlet />
+      </CartProvider>
+    </AuthProvider>
+  ),
   notFoundComponent: NotFoundComponent,
 });
 
