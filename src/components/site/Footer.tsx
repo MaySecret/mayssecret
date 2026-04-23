@@ -111,7 +111,7 @@ export function Footer() {
 
         <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-primary-foreground/15 pt-8 text-xs uppercase tracking-luxe text-primary-foreground/50 md:flex-row md:items-center">
           <p>© {new Date().getFullYear()} May's Secret. All rights reserved.</p>
-          <p>Composed in Lagos · Worn everywhere</p>
+      
         </div>
       </div>
     </footer>
