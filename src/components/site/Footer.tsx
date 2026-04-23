@@ -19,8 +19,8 @@ export function Footer() {
         <div className="mx-auto max-w-7xl px-5 py-20 md:px-8 md:py-28">
           <p className="text-xs uppercase tracking-luxe text-primary-foreground/60">Our promise</p>
           <h2 className="mt-6 max-w-3xl font-display text-4xl leading-[1.1] md:text-6xl">
-            A scent is the most intimate signature you'll ever wear.<br className="hidden md:block" />
-            Choose yours with intention.
+            We promise more than a perfume. We promise a transformation.<br className="hidden md:block" />
+            The moment you wear May's Secret, you aren't just seen, you are remembered.
           </h2>
           <div className="mt-12 flex flex-wrap items-center gap-6">
             <Link
