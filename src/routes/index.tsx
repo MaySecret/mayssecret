@@ -148,7 +148,7 @@ function HomePage() {
         <div className="mx-auto grid max-w-5xl gap-8 px-5 py-24 text-center md:px-8">
           <p className="text-xs uppercase tracking-luxe text-accent-foreground/70">Our craft</p>
           <h2 className="font-display text-4xl leading-tight md:text-5xl">
-            Every May's Secret is composed by hand,<br />in small batches, with rare materials.
+            We compose each fragrance the way a secret is kept,<br /> Carefully, deliberately, and only for those who deserve it.
           </h2>
         </div>
       </section>
