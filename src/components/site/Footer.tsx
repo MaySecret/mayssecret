@@ -50,7 +50,7 @@ export function Footer() {
             {/* Social icons */}
             <div className="mt-6 flex items-center gap-4">
               <a
-                href="#"
+                href="https://www.instagram.com/mayssecretbrand"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Instagram"
@@ -59,7 +59,7 @@ export function Footer() {
                 <Instagram className="h-5 w-5" />
               </a>
               <a
-                href="#"
+                href="https://x.com/mayssecretbrand"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="X (Twitter)"
