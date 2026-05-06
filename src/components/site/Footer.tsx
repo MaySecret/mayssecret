@@ -68,7 +68,7 @@ export function Footer() {
                 <XIcon className="h-4 w-4" />
               </a>
               <a
-                href="#"
+                href="https://www.facebook.com/share/18PVxofwLb/?mibextid=wwXIfr"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Facebook"
