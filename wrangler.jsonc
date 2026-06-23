@@ -1,3 +1,6 @@
+// Note: This file is OPTIONAL and only needed for Cloudflare Workers deployment.
+// For other platforms (Vercel, Netlify, Railway, Docker, etc.), this file is ignored.
+// Remove or keep as-is — it won't affect non-Cloudflare builds.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mayssecret",
