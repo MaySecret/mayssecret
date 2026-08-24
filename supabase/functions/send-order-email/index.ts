@@ -31,6 +31,11 @@ const STATUS_COPY: Record<string, { subject: (c: string) => string; heading: str
     heading: "Delivered with love",
     body: "Your order has been delivered. We hope every spray feels like a small ritual. Thank you for choosing May's Secret.",
   },
+  cancelled: {
+    subject: (c) => `Action needed — your May's Secret order ${c}`,
+    heading: "We couldn't complete your order",
+    body: "Your payment was cancelled, so we can't process or ship this order until payment is made. No charge has been taken. Please complete your payment to place the order — we'll prepare your fragrance the moment it clears.",
+  },
 };
 
 type Item = { product_name: string; variant_size: string; quantity: number; price: number };

@@ -7,7 +7,7 @@ import { sendOrderEmail } from "@/lib/email";
 type Order = {
   id: string; order_code: string; customer_name: string; phone: string; address: string; email: string;
   subtotal: number; shipping_fee: number; total_price: number;
-  payment_status: "pending"|"paid"|"failed"; delivery_status: "processing"|"shipped"|"delivered"|"cancelled";
+  payment_status: "pending"|"paid"|"failed"|"cancelled"; delivery_status: "processing"|"shipped"|"delivered"|"cancelled";
   created_at: string;
   order_items: { product_name: string; variant_size: string; quantity: number; price: number }[];
 };
@@ -96,6 +96,7 @@ function OrdersPage() {
                 </div>
                 <div className="flex flex-wrap gap-3 pt-2">
                   <Action label="Mark paid" onClick={() => setPayment(o.id, "paid")} />
+                  <Action label="Mark cancelled" onClick={() => setPayment(o.id, "cancelled")} />
                   <Action label="Mark failed" onClick={() => setPayment(o.id, "failed")} />
                   <Action label="Processing" onClick={() => setDelivery(o.id, "processing")} />
                   <Action label="Shipped" onClick={() => setDelivery(o.id, "shipped")} />

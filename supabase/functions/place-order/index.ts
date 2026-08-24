@@ -98,6 +98,7 @@ Deno.serve(async (req) => {
     const total = subtotal + shipping_fee;
 
     // ---- Create PENDING order ----
+    const origin = req.headers.get("origin") ?? new URL(req.url).origin;
     const { data: order, error: oErr } = await admin
       .from("orders")
       .insert({
@@ -106,6 +107,7 @@ Deno.serve(async (req) => {
         email: payload.email.trim(),
         address: payload.address.trim(),
         guest_id: payload.guest_id ?? null,
+        site_origin: origin,
         subtotal,
         shipping_fee,
         total_price: total,
@@ -145,8 +147,10 @@ Deno.serve(async (req) => {
 
     try {
       const reference = `MS-${order.order_code}-${Date.now()}`;
-      const origin = req.headers.get("origin") ?? new URL(req.url).origin;
-      const redirect_url = `${origin}/order/success?ref=${encodeURIComponent(order.order_code)}`;
+      // Route the customer through order-redirect (a Supabase function) so we
+      // verify the charge server-side and only land them on /order/success when
+      // actually paid. Cancelled/failed payments are sent to /cart instead.
+      const redirect_url = `${SUPABASE_URL}/functions/v1/order-redirect/${encodeURIComponent(order.order_code)}`;
 
       const koraRes = await fetch(`${KORA_API}/charges/initialize`, {
         method: "POST",
