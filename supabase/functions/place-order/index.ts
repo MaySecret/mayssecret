@@ -18,10 +18,14 @@ type Payload = {
   email: string;
   address: string;
   guest_id?: string;
+  fulfillment?: "delivery" | "pickup";
+  state?: string | null;
   items: { variant_id: string; quantity: number }[];
 };
 
 const KORA_API = "https://api.korapay.com/merchant/api/v1";
+// Default delivery price (NGN) used when a state has no custom admin rate.
+const DEFAULT_SHIPPING = 10000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -88,13 +92,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ---- Shipping fee from settings ----
-    const { data: settings } = await admin
-      .from("site_settings")
-      .select("shipping_fee")
-      .limit(1)
-      .maybeSingle();
-    const shipping_fee = settings ? Number(settings.shipping_fee) : 0;
+    // ---- Shipping fee ----
+    // Pickup is free. Delivery uses the admin-set rate for the selected state
+    // (falling back to the site default, then 10000) so the server is always
+    // authoritative — the customer can never understate the shipping cost.
+    const fulfillment = payload.fulfillment === "pickup" ? "pickup" : "delivery";
+    let shipping_fee = 0;
+    if (fulfillment === "delivery") {
+      const deliveryState = payload.state?.trim();
+      if (!deliveryState) {
+        return json({ error: "Please select your delivery state." }, 400);
+      }
+      const { data: rateRow } = await admin
+        .from("state_delivery_rates")
+        .select("price")
+        .eq("state", deliveryState)
+        .maybeSingle();
+      let rate = rateRow ? Number(rateRow.price) : NaN;
+      if (!Number.isFinite(rate)) {
+        const { data: settings } = await admin
+          .from("site_settings")
+          .select("shipping_fee")
+          .limit(1)
+          .maybeSingle();
+        rate = settings ? Number(settings.shipping_fee) : DEFAULT_SHIPPING;
+      }
+      shipping_fee = rate;
+    }
     const total = subtotal + shipping_fee;
 
     // ---- Create PENDING order ----
@@ -108,6 +132,8 @@ Deno.serve(async (req) => {
         address: payload.address.trim(),
         guest_id: payload.guest_id ?? null,
         site_origin: origin,
+        fulfillment,
+        state: fulfillment === "delivery" ? (payload.state?.trim() ?? null) : null,
         subtotal,
         shipping_fee,
         total_price: total,

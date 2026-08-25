@@ -25,6 +25,8 @@ type Order = {
   total_price: number;
   payment_status: "pending" | "paid" | "failed" | "cancelled";
   delivery_status: string;
+  fulfillment: "delivery" | "pickup";
+  state: string | null;
   created_at: string;
   order_items: { product_name: string; variant_size: string; quantity: number; price: number }[];
 };
@@ -55,7 +57,7 @@ function SuccessPage() {
         const { data: full } = await supabase
           .from("orders")
           .select(
-            "id, order_code, customer_name, email, address, subtotal, shipping_fee, total_price, payment_status, delivery_status, created_at, order_items(product_name, variant_size, quantity, price)",
+            "id, order_code, customer_name, email, address, subtotal, shipping_fee, total_price, payment_status, delivery_status, fulfillment, state, created_at, order_items(product_name, variant_size, quantity, price)",
           )
           .eq("order_code", ref)
           .maybeSingle();
@@ -169,6 +171,12 @@ function SuccessPage() {
             <div className="mt-2 flex justify-between text-sm">
               <span className="text-muted-foreground">Delivery</span>
               <span className="uppercase tracking-luxe">{order.delivery_status}</span>
+            </div>
+            <div className="mt-2 flex justify-between text-sm">
+              <span className="text-muted-foreground">Fulfillment</span>
+              <span className="uppercase tracking-luxe">
+                {order.fulfillment === "pickup" ? "Pickup" : order.state ? `Delivery — ${order.state}` : "Delivery"}
+              </span>
             </div>
 
             <div className="mt-6 space-y-3 border-t border-border pt-4">

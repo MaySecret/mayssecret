@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SiteShell } from "@/components/site/SiteShell";
 import { formatNGN } from "@/lib/format";
 import { useCart } from "@/lib/cart";
-import { fetchSiteSettings } from "@/lib/settings";
+import { fetchStateRates, NIGERIAN_STATES, DEFAULT_SHIPPING } from "@/lib/settings";
 
 export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
@@ -35,6 +35,9 @@ function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [shipping, setShipping] = useState<number>(0);
   const [shippingLoading, setShippingLoading] = useState(true);
+  const [fulfillment, setFulfillment] = useState<"delivery" | "pickup">("delivery");
+  const [deliveryState, setDeliveryState] = useState<string>("");
+  const [rates, setRates] = useState<Record<string, number>>({});
 
   // Prefill from saved profile (last checkout)
   useEffect(() => {
@@ -42,13 +45,19 @@ function CheckoutPage() {
     if (p) setForm((f) => ({ ...f, ...p }));
   }, []);
 
-  // Fetch shipping fee
+  // Fetch per-state delivery rates (admin-managed). Pickup is always free.
   useEffect(() => {
-    fetchSiteSettings().then((s) => {
-      setShipping(s.shipping_fee);
+    fetchStateRates().then((r) => {
+      setRates(r);
       setShippingLoading(false);
     });
   }, []);
+
+  // Recompute the shipping fee whenever the method or selected state changes.
+  useEffect(() => {
+    if (fulfillment === "pickup") setShipping(0);
+    else setShipping(deliveryState ? (rates[deliveryState] ?? DEFAULT_SHIPPING) : 0);
+  }, [fulfillment, deliveryState, rates]);
 
   // Redirect if cart empty
   useEffect(() => {
@@ -72,6 +81,12 @@ function CheckoutPage() {
     setErrors({});
     setSubmitting(true);
 
+    if (fulfillment === "delivery" && !deliveryState) {
+      setErrors({ form: "Please select your delivery state." });
+      setSubmitting(false);
+      return;
+    }
+
     // Save for prefill next time
     if (typeof window !== "undefined") {
       localStorage.setItem(PROFILE_KEY, JSON.stringify(parsed.data));
@@ -81,6 +96,8 @@ function CheckoutPage() {
       body: {
         ...parsed.data,
         guest_id: guestId,
+        fulfillment,
+        state: fulfillment === "delivery" ? deliveryState : null,
         items: items.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity })),
       },
     });
@@ -132,6 +149,55 @@ function CheckoutPage() {
               {errors.address && <p className="mt-1 text-xs text-destructive">{errors.address}</p>}
             </div>
 
+            <div>
+              <label className="text-xs uppercase tracking-luxe text-muted-foreground">Fulfillment</label>
+              <div className="mt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFulfillment("delivery")}
+                  className={`flex-1 border px-4 py-3 text-xs uppercase tracking-luxe transition ${
+                    fulfillment === "delivery" ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"
+                  }`}
+                >
+                  Delivery
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFulfillment("pickup")}
+                  className={`flex-1 border px-4 py-3 text-xs uppercase tracking-luxe transition ${
+                    fulfillment === "pickup" ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground"
+                  }`}
+                >
+                  Pickup
+                </button>
+              </div>
+            </div>
+
+            {fulfillment === "delivery" && (
+              <div>
+                <label className="text-xs uppercase tracking-luxe text-muted-foreground">Delivery state</label>
+                <select
+                  value={deliveryState}
+                  onChange={(e) => setDeliveryState(e.target.value)}
+                  className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm focus:border-foreground focus:outline-none"
+                >
+                  <option value="">Select your state</option>
+                  {NIGERIAN_STATES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                {shippingLoading ? (
+                  <p className="mt-2 text-xs text-muted-foreground">Loading delivery rates…</p>
+                ) : deliveryState ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Delivery to {deliveryState}: <span className="text-foreground">{formatNGN(rates[deliveryState] ?? DEFAULT_SHIPPING)}</span>
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">Select a state to see the delivery fee.</p>
+                )}
+              </div>
+            )}
+
             {errors.form && <p className="text-sm text-destructive">{errors.form}</p>}
 
             <button
@@ -167,7 +233,7 @@ function CheckoutPage() {
             </div>
             <div className="mt-6 space-y-2 border-t border-border pt-4 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Subtotal ({count})</span><span>{formatNGN(subtotal)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Shipping fee</span><span>{formatNGN(shipping)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Shipping fee</span><span>{fulfillment === "pickup" ? "Free" : deliveryState ? formatNGN(shipping) : "—"}</span></div>
               <div className="mt-3 flex justify-between border-t border-border pt-3 font-display text-xl">
                 <span>Total</span>
                 <span>{formatNGN(total)}</span>

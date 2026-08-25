@@ -7,6 +7,7 @@ import { sendOrderEmail } from "@/lib/email";
 type Order = {
   id: string; order_code: string; customer_name: string; phone: string; address: string; email: string;
   subtotal: number; shipping_fee: number; total_price: number;
+  fulfillment: "delivery" | "pickup"; state: string | null;
   payment_status: "pending"|"paid"|"failed"|"cancelled"; delivery_status: "processing"|"shipped"|"delivered"|"cancelled";
   created_at: string;
   order_items: { product_name: string; variant_size: string; quantity: number; price: number }[];
@@ -21,7 +22,7 @@ function OrdersPage() {
   async function load() {
     const { data } = await supabase
       .from("orders")
-      .select("id, order_code, customer_name, phone, address, email, subtotal, shipping_fee, total_price, payment_status, delivery_status, created_at, order_items(product_name, variant_size, quantity, price)")
+      .select("id, order_code, customer_name, phone, address, email, subtotal, shipping_fee, total_price, fulfillment, state, payment_status, delivery_status, created_at, order_items(product_name, variant_size, quantity, price)")
       .order("created_at", { ascending: false });
     setOrders((data as unknown as Order[]) ?? []);
   }
@@ -81,6 +82,7 @@ function OrdersPage() {
                 <div><span className="text-xs uppercase tracking-luxe text-muted-foreground">Email: </span>{o.email}</div>
                 <div><span className="text-xs uppercase tracking-luxe text-muted-foreground">Phone: </span>{o.phone}</div>
                 <div><span className="text-xs uppercase tracking-luxe text-muted-foreground">Address: </span>{o.address}</div>
+                <div><span className="text-xs uppercase tracking-luxe text-muted-foreground">Fulfillment: </span>{o.fulfillment === "pickup" ? "Pickup" : o.state ? `Delivery — ${o.state}` : "Delivery"}</div>
                 <div>
                   <p className="text-xs uppercase tracking-luxe text-muted-foreground">Items</p>
                   <ul className="mt-1 space-y-1">

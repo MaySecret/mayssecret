@@ -87,6 +87,8 @@ export type Database = {
           payment_status: Database["public"]["Enums"]["payment_status"]
           phone: string
           shipping_fee: number
+          fulfillment: string
+          state: string | null
           subtotal: number
           total_price: number
           updated_at: string
@@ -106,6 +108,8 @@ export type Database = {
           payment_status?: Database["public"]["Enums"]["payment_status"]
           phone: string
           shipping_fee?: number
+          fulfillment?: string
+          state?: string | null
           subtotal?: number
           total_price: number
           updated_at?: string
@@ -125,6 +129,8 @@ export type Database = {
           payment_status?: Database["public"]["Enums"]["payment_status"]
           phone?: string
           shipping_fee?: number
+          fulfillment?: string
+          state?: string | null
           subtotal?: number
           total_price?: number
           updated_at?: string
@@ -217,6 +223,27 @@ export type Database = {
         Update: {
           id?: string
           shipping_fee?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      state_delivery_rates: {
+        Row: {
+          id: string
+          state: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          state: string
+          price?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          state?: string
+          price?: number
           updated_at?: string
         }
         Relationships: []
