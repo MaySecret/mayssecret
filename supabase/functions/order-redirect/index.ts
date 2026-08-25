@@ -1,11 +1,14 @@
 // Edge Function: order-redirect
-// Kora always redirects the customer back to the redirect_url after payment —
-// whether it succeeded, failed, OR the customer cancelled/closed checkout. That
-// redirect carries no payment status. This function verifies the charge with
-// Kora server-side and then sends the browser to the correct frontend route:
-//   - paid (or still pending, e.g. bank transfer): /order/success
-//   - failed / cancelled / abandoned:            /cart
-// So a cancelled payment NEVER lands on the order success page.
+// Kora redirects the customer back to redirect_url after EVERY outcome:
+// success, failure, OR when the customer closes/abandons the checkout. That
+// redirect carries only ?reference= (no status), so we verify the charge with
+// Kora server-side and route the browser accordingly:
+//   - confirmed success  -> /order/success                  (order marked paid)
+//   - anything else       -> /order/success?result=cancelled (order marked cancelled)
+// A cancelled/abandoned payment therefore NEVER reaches the "Order received"
+// success state. A genuine bank transfer that is still settling can later flip
+// to paid via the Kora webhook / verify-order poll, which safely upgrades
+// cancelled -> paid (stock is decremented only at that point).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -30,12 +33,18 @@ Deno.serve(async (req) => {
     if (oErr || !order) return redirect("/");
 
     const site = String(order.site_origin || "").replace(/\/$/, "");
-    const toSuccess = () => redirect(`${site}/order/success?ref=${encodeURIComponent(order.order_code)}`);
-    const toCart = () => redirect(`${site}/cart`);
+    const toSuccess = (result?: string) =>
+      redirect(`${site}/order/success?ref=${encodeURIComponent(order.order_code)}${result ? `&result=${result}` : ""}`);
 
     // Already finalized.
     if (order.payment_status === "paid") return toSuccess();
-    if (order.payment_status === "cancelled" || order.payment_status === "failed") return toCart();
+    if (order.payment_status === "cancelled" || order.payment_status === "failed") return toSuccess("cancelled");
+
+    // Full items (needed for the confirmation/cancellation email).
+    const { data: fullItems } = await admin
+      .from("order_items")
+      .select("product_name, variant_size, quantity, price")
+      .eq("order_id", order.id);
 
     // Verify the charge with Kora (authoritative).
     let verifiedStatus = "pending";
@@ -55,18 +64,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (verifiedStatus === "success") {
-      const { data: items } = await admin
-        .from("order_items")
-        .select("variant_id, quantity")
-        .eq("order_id", order.id);
+    const markPaid = async () => {
+      const { data: items } = await admin.from("order_items").select("variant_id, quantity").eq("order_id", order.id);
       if (items) {
         for (const it of items) {
-          const { data: v } = await admin
-            .from("product_variants")
-            .select("stock")
-            .eq("id", it.variant_id)
-            .maybeSingle();
+          const { data: v } = await admin.from("product_variants").select("stock").eq("id", it.variant_id).maybeSingle();
           if (v) {
             const newStock = Math.max(0, Number(v.stock) - Number(it.quantity));
             await admin.from("product_variants").update({ stock: newStock }).eq("id", it.variant_id);
@@ -74,18 +76,26 @@ Deno.serve(async (req) => {
         }
       }
       await admin.from("orders").update({ payment_status: "paid" }).eq("id", order.id);
-      await sendStatusEmail(admin, SUPABASE_URL, SERVICE_KEY, order, "paid");
+      await sendStatusEmail(SUPABASE_URL, SERVICE_KEY, order, "paid", fullItems ?? []);
+    };
+
+    const markCancelled = async () => {
+      await admin.from("orders").update({ payment_status: "cancelled" }).eq("id", order.id);
+      await sendStatusEmail(SUPABASE_URL, SERVICE_KEY, order, "cancelled", fullItems ?? []);
+    };
+
+    // CONFIRMED success -> order is paid.
+    if (verifiedStatus === "success") {
+      await markPaid();
       return toSuccess();
     }
 
-    if (verifiedStatus === "failed" || verifiedStatus === "abandoned" || verifiedStatus === "cancelled") {
-      await admin.from("orders").update({ payment_status: "cancelled" }).eq("id", order.id);
-      await sendStatusEmail(admin, SUPABASE_URL, SERVICE_KEY, order, "cancelled");
-      return toCart();
-    }
-
-    // Still pending (e.g. bank transfer settling) — let the success page poll.
-    return toSuccess();
+    // Everything else (failed / abandoned / cancelled / still pending because the
+    // customer closed checkout) means payment was NOT completed. Mark the order
+    // cancelled and send the customer to the "payment required" state — never the
+    // "Order received" success state.
+    await markCancelled();
+    return toSuccess("cancelled");
   } catch (e) {
     console.error("[order-redirect] error:", e);
     return redirect("/");
@@ -97,17 +107,13 @@ function redirect(location: string) {
 }
 
 async function sendStatusEmail(
-  admin: any,
   SUPABASE_URL: string,
   SERVICE_KEY: string,
   order: any,
   status: string,
+  items: any[],
 ) {
   try {
-    const { data: fullItems } = await admin
-      .from("order_items")
-      .select("product_name, variant_size, quantity, price")
-      .eq("order_id", order.id);
     await fetch(`${SUPABASE_URL}/functions/v1/send-order-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}` },
@@ -119,7 +125,7 @@ async function sendStatusEmail(
         subtotal: Number(order.subtotal),
         shipping: Number(order.shipping_fee),
         total: Number(order.total_price),
-        items: (fullItems ?? []).map((it: any) => ({
+        items: (items ?? []).map((it: any) => ({
           product_name: it.product_name,
           variant_size: it.variant_size,
           quantity: it.quantity,

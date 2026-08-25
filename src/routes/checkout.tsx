@@ -99,7 +99,7 @@ function CheckoutPage() {
     }
 
     // Fallback: go to success page (e.g., zero-amount or no payment URL)
-    navigate({ to: "/order/success", search: { ref: data.order_code } });
+    navigate({ to: "/order/success", search: { ref: data.order_code, result: "" } });
   }
 
   if (cartLoading || shippingLoading) {

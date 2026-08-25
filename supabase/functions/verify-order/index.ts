@@ -37,9 +37,11 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (oErr || !order) return json({ error: "Order not found." }, 404);
 
-    // Already finalized — nothing to do.
-    if (order.payment_status !== "pending") {
-      return json({ payment_status: order.payment_status });
+    // Already confirmed paid — nothing to do. A previously-cancelled order is
+    // allowed to be re-verified so a late bank-transfer confirmation (or the Kora
+    // webhook) can still upgrade it to paid.
+    if (order.payment_status === "paid") {
+      return json({ payment_status: "paid" });
     }
 
     // Can't verify without a reference or secret — leave pending for the webhook.
@@ -63,13 +65,17 @@ Deno.serve(async (req) => {
       console.error("[verify-order] verify error:", e);
     }
 
-    let outcome: "paid" | "cancelled" | "pending" = "pending";
+    let outcome: "paid" | "cancelled" | "pending" =
+      order.payment_status === "cancelled" || order.payment_status === "failed" ? "cancelled" : "pending";
     if (verifiedStatus === "success") outcome = "paid";
     else if (verifiedStatus === "failed" || verifiedStatus === "abandoned" || verifiedStatus === "cancelled") {
       outcome = "cancelled";
     }
 
-    if (outcome === "paid") {
+    // Only change the order and send an email when the status actually transitions
+    // (pending -> paid/cancelled). This prevents duplicate emails on the success
+    // page's polling and avoids touching an already-finalized order.
+    if (outcome === "paid" && order.payment_status !== "paid") {
       const { data: items } = await admin
         .from("order_items")
         .select("variant_id, quantity")
@@ -89,7 +95,7 @@ Deno.serve(async (req) => {
       }
       await admin.from("orders").update({ payment_status: "paid" }).eq("id", order.id);
       await sendStatusEmail(admin, SUPABASE_URL, SERVICE_KEY, order, "paid");
-    } else if (outcome === "cancelled") {
+    } else if (outcome === "cancelled" && order.payment_status === "pending") {
       await admin.from("orders").update({ payment_status: "cancelled" }).eq("id", order.id);
       await sendStatusEmail(admin, SUPABASE_URL, SERVICE_KEY, order, "cancelled");
     }

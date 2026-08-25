@@ -9,6 +9,7 @@ import { useCart } from "@/lib/cart";
 export const Route = createFileRoute("/order/success")({
   validateSearch: (search: Record<string, unknown>) => ({
     ref: typeof search.ref === "string" ? search.ref : "",
+    result: typeof search.result === "string" ? search.result : "",
   }),
   component: SuccessPage,
 });
@@ -29,7 +30,7 @@ type Order = {
 };
 
 function SuccessPage() {
-  const { ref } = Route.useSearch();
+  const { ref, result } = Route.useSearch();
   const { clear } = useCart();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,14 +85,30 @@ function SuccessPage() {
 
   const status = order?.payment_status;
 
+  // How to present the result. A customer who returns from Kora without a
+  // confirmed payment (cancel/close/abandon) must NEVER see "Order received".
+  const view: "paid" | "cancelled" | "pending-cancelled" | "pending" = !status
+    ? "pending"
+    : status === "paid"
+      ? "paid"
+      : status === "cancelled" || status === "failed" || result === "cancelled"
+        ? "cancelled"
+        : result === "pending"
+          ? "pending-cancelled"
+          : "pending";
+  const isPaid = view === "paid";
+  const isCancelledState = view === "cancelled";
+  const isPendingCancelled = view === "pending-cancelled";
+  const needsPayment = isCancelledState || isPendingCancelled;
+
   return (
     <SiteShell>
       <div className="mx-auto max-w-2xl px-5 py-20 text-center md:px-8 md:py-28">
-        {status === "paid" ? (
+        {isPaid ? (
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent/15">
             <CheckCircle2 className="h-8 w-8 text-accent" />
           </div>
-        ) : status === "cancelled" || status === "failed" ? (
+        ) : needsPayment ? (
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
             <CheckCircle2 className="h-8 w-8 text-destructive" />
           </div>
@@ -101,28 +118,28 @@ function SuccessPage() {
           </div>
         )}
         <p className="mt-6 text-xs uppercase tracking-luxe text-accent">
-          {status === "paid" ? "Thank you" : status === "cancelled" ? "Order cancelled" : status === "failed" ? "Payment incomplete" : "One moment"}
+          {isPaid ? "Thank you" : isCancelledState ? "Order cancelled" : isPendingCancelled ? "Payment not completed" : "One moment"}
         </p>
         <h1 className="mt-4 font-display text-5xl">
-          {status === "paid"
+          {isPaid
             ? "Payment successful"
-            : status === "cancelled"
+            : isCancelledState
               ? "Order cancelled"
-              : status === "failed"
+              : isPendingCancelled
                 ? "Payment not completed"
                 : "Order received"}
         </h1>
         <p className="mt-4 text-muted-foreground">
-          {status === "paid"
+          {isPaid
             ? "Your fragrance is being prepared. A confirmation email is on its way."
-            : status === "cancelled"
+            : isCancelledState
               ? "Your payment was cancelled, so we can't process or ship this order until payment is made. No charge has been taken — please complete your payment to place the order."
-              : status === "failed"
-                ? "Your payment did not go through, so your order has not been confirmed. Please try your payment again."
+              : isPendingCancelled
+                ? "We couldn't confirm your payment, so your order hasn't been placed. No charge has been taken — please complete your payment to place the order."
                 : "We're confirming your payment. This usually takes a few seconds."}
         </p>
 
-        {(status === "cancelled" || status === "failed") && (
+        {needsPayment && (
           <Link
             to="/cart"
             className="mt-8 inline-block bg-primary px-8 py-4 text-xs uppercase tracking-luxe text-primary-foreground transition hover:bg-primary/90"
@@ -166,13 +183,13 @@ function SuccessPage() {
               <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatNGN(Number(order.subtotal))}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>{formatNGN(Number(order.shipping_fee))}</span></div>
                 <div className="mt-2 flex justify-between border-t border-border pt-2 font-display text-xl">
-                  <span>{status === "paid" ? "Total paid" : status === "cancelled" ? "Total due" : "Total"}</span>
+                  <span>{isPaid ? "Total paid" : needsPayment ? "Total due" : "Total"}</span>
                   <span>{formatNGN(Number(order.total_price))}</span>
                 </div>
               </div>
 
               <p className="mt-6 text-xs text-muted-foreground">
-                {status === "paid"
+                {isPaid
                   ? <>A confirmation has been sent to <span className="text-foreground">{order.email}</span>. Please save this Order ID for reference.</>
                   : <>No charge has been taken and we can't process this order until payment is made. An email was sent to <span className="text-foreground">{order.email}</span> — please complete your payment to confirm the order.</>}
               </p>

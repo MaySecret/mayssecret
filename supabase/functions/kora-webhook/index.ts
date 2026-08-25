@@ -105,9 +105,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Idempotency: ignore if already paid/failed
-    if (order.payment_status !== "pending") {
-      return ok({ received: true, note: "already finalized" });
+    // Idempotency: a confirmed-paid order never changes. A cancelled order may
+    // still be upgraded to paid if Kora later reports a successful charge (e.g. a
+    // bank transfer that settled late), so we don't early-return on it.
+    if (order.payment_status === "paid") {
+      return ok({ received: true, note: "already paid" });
     }
 
     // Decide the outcome.
@@ -149,7 +151,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (outcome === "paid") {
+    if (outcome === "paid" && order.payment_status !== "paid") {
       // Sanity check amount matches (allow Kora to send in major or minor units; compare loosely)
       const expected = Number(order.total_price);
       const amountMatches = !verifiedAmount ||
@@ -158,7 +160,9 @@ Deno.serve(async (req) => {
       if (!amountMatches) {
         console.error("[kora-webhook] amount mismatch", { reference, verifiedAmount, expected });
         // Payment cannot be trusted — cancel the order rather than confirm it.
-        await admin.from("orders").update({ payment_status: "cancelled" }).eq("id", order.id);
+        if (order.payment_status === "pending") {
+          await admin.from("orders").update({ payment_status: "cancelled" }).eq("id", order.id);
+        }
         return ok({ received: true, note: "amount mismatch" });
       }
 
@@ -186,7 +190,7 @@ Deno.serve(async (req) => {
 
       // Notify the buyer
       await sendStatusEmail("paid");
-    } else if (outcome === "cancelled") {
+    } else if (outcome === "cancelled" && order.payment_status === "pending") {
       await admin.from("orders").update({ payment_status: "cancelled" }).eq("id", order.id);
       // Tell the buyer we can't process the order until payment is made.
       await sendStatusEmail("cancelled");
