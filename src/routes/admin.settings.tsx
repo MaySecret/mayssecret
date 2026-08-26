@@ -8,6 +8,18 @@ export const Route = createFileRoute("/admin/settings")({
   component: SettingsPage,
 });
 
+// Parses a free-form amount string (allows "5,000", "5000", " 5000 ") into a
+// non-negative number, or returns null when the value is empty/invalid. This
+// prevents the classic bug where an empty or separator-containing input is
+// coerced to 0 and silently saved.
+function parseAmount(raw: string | undefined): number | null {
+  const cleaned = (raw ?? "").replace(/[^\d.]/g, "");
+  if (cleaned === "" || cleaned === ".") return null;
+  const n = Number(cleaned);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
+
 function SettingsPage() {
   const [id, setId] = useState<string | null>(null);
   const [shippingFee, setShippingFee] = useState<string>("");
@@ -44,15 +56,20 @@ function SettingsPage() {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
-    const fee = Number(shippingFee);
-    if (!Number.isFinite(fee) || fee < 0) {
+    const fee = parseAmount(shippingFee);
+    if (fee === null) {
       setMsg({ type: "err", text: "Enter a valid shipping fee (0 or above)." });
       return;
     }
     setSaving(true);
     const { error } = id
-      ? await supabase.from("site_settings").update({ shipping_fee: fee }).eq("id", id)
-      : await supabase.from("site_settings").insert({ shipping_fee: fee });
+      ? await supabase
+          .from("site_settings")
+          .update({ shipping_fee: fee, updated_at: new Date().toISOString() })
+          .eq("id", id)
+      : await supabase
+          .from("site_settings")
+          .insert({ shipping_fee: fee, updated_at: new Date().toISOString() });
     setSaving(false);
     if (error) setMsg({ type: "err", text: error.message });
     else {
@@ -64,11 +81,8 @@ function SettingsPage() {
   async function saveRates(e: React.FormEvent) {
     e.preventDefault();
     setRatesMsg(null);
-    const updates = NIGERIAN_STATES.map((s) => {
-      const v = Number(rates[s]);
-      return { state: s, value: v };
-    });
-    if (updates.some((u) => !Number.isFinite(u.value) || u.value < 0)) {
+    const updates = NIGERIAN_STATES.map((s) => ({ state: s, value: parseAmount(rates[s]) }));
+    if (updates.some((u) => u.value === null)) {
       setRatesMsg({ type: "err", text: "All state delivery fees must be valid numbers (0 or above)." });
       return;
     }
@@ -77,7 +91,7 @@ function SettingsPage() {
     for (const u of updates) {
       const { error } = await supabase
         .from("state_delivery_rates")
-        .update({ price: u.value, updated_at: new Date().toISOString() })
+        .update({ price: u.value as number, updated_at: new Date().toISOString() })
         .eq("state", u.state);
       if (error) failed = true;
     }
@@ -91,7 +105,7 @@ function SettingsPage() {
 
   if (loading) return <div className="p-10 text-sm text-muted-foreground">Loading…</div>;
 
-  const preview = Number(shippingFee || 0);
+  const preview = parseAmount(shippingFee) ?? 0;
 
   return (
     <div className="p-6 md:p-10">
@@ -102,9 +116,9 @@ function SettingsPage() {
         <div>
           <label className="text-xs uppercase tracking-luxe text-muted-foreground">Default shipping fee (NGN)</label>
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             min="0"
-            step="100"
             value={shippingFee}
             onChange={(e) => setShippingFee(e.target.value)}
             className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm focus:border-foreground focus:outline-none"
@@ -139,9 +153,9 @@ function SettingsPage() {
             <div key={s}>
               <label className="text-xs uppercase tracking-luxe text-muted-foreground">{s}</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 min="0"
-                step="100"
                 value={rates[s] ?? ""}
                 onChange={(e) => setRates((r) => ({ ...r, [s]: e.target.value }))}
                 className="mt-1 w-full border border-border bg-background px-3 py-2 text-sm focus:border-foreground focus:outline-none"
